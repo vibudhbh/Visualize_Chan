@@ -224,7 +224,7 @@ class D3ConvexHullVisualizer {
             this.renderGrahamHull();
         } else if (this.currentStep.type === 'jarvis_step' || this.currentStep.type === 'testing') {
             this.renderJarvisHull();
-        } else if (this.currentStep.type === 'mini_hull' || this.currentStep.type === 'jarvis') {
+        } else if (this.currentStep.type === 'mini_hull' || this.currentStep.type === 'jarvis_phase' || this.currentStep.type === 'connecting_edge') {
             this.renderChanHull();
         } else if (['seed', 'inside', 'tangents', 'splice_done'].includes(this.currentStep.type)) {
             this.renderIncrementalHull();
@@ -283,12 +283,11 @@ class D3ConvexHullVisualizer {
     renderGrahamHull() {
         const hullGroup = this.groups.hull;
         
-        // For complete Graham's scan, combine upper and lower hulls into final closed polygon
-        if (this.currentStep.type === 'complete' && this.currentStep.upper_hull && this.currentStep.lower_hull) {
-            // Combine upper and lower hulls to form complete hull
-            const completeHull = [...this.currentStep.upper_hull, ...this.currentStep.lower_hull.slice(1, -1).reverse()];
+        // For complete Graham's scan, show the final hull
+        if (this.currentStep.type === 'complete' && this.currentStep.final_hull) {
+            const finalHull = this.currentStep.final_hull;
             
-            if (completeHull.length > 2) {
+            if (finalHull.length > 2) {
                 const closedLine = d3.line()
                     .x(d => this.xScale(d.x))
                     .y(d => this.yScale(d.y))
@@ -296,14 +295,14 @@ class D3ConvexHullVisualizer {
                 
                 // Fill first
                 hullGroup.append('path')
-                    .datum(completeHull)
+                    .datum(finalHull)
                     .attr('d', closedLine)
                     .style('fill', 'rgba(59, 130, 246, 0.2)')
                     .style('stroke', 'none');
                 
                 // Then closed outline
                 hullGroup.append('path')
-                    .datum(completeHull)
+                    .datum(finalHull)
                     .attr('d', closedLine)
                     .style('fill', 'none')
                     .style('stroke', '#3b82f6')
@@ -311,7 +310,7 @@ class D3ConvexHullVisualizer {
                     .style('stroke-linejoin', 'round');
                 
                 // Hull vertices
-                completeHull.forEach(point => {
+                finalHull.forEach(point => {
                     hullGroup.append('circle')
                         .attr('cx', this.xScale(point.x))
                         .attr('cy', this.yScale(point.y))
@@ -321,14 +320,22 @@ class D3ConvexHullVisualizer {
                         .style('stroke-width', 2);
                 });
             }
-            return; // Don't draw individual upper/lower hulls for complete step
+            return;
         }
         
-        // Upper hull
+        // Show sorted points with indices during sorting
+        if (this.currentStep.type === 'sorting') {
+            // Just show the points - they'll be colored by the point renderer
+            return;
+        }
+        
+        // Draw upper hull (blue) - always show if it exists
         if (this.currentStep.upper_hull && this.currentStep.upper_hull.length > 1) {
             const line = d3.line()
                 .x(d => this.xScale(d.x))
                 .y(d => this.yScale(d.y));
+            
+            const isActive = this.currentStep.type === 'upper_hull';
             
             hullGroup.append('path')
                 .datum(this.currentStep.upper_hull)
@@ -336,15 +343,30 @@ class D3ConvexHullVisualizer {
                 .attr('class', 'hull-line upper')
                 .style('fill', 'none')
                 .style('stroke', '#3b82f6')
-                .style('stroke-width', this.currentStep.type === 'upper_hull' ? 4 : 2)
-                .style('stroke-dasharray', this.currentStep.type === 'upper_hull' ? 'none' : '5,5');
+                .style('stroke-width', isActive ? 4 : 2)
+                .style('stroke-dasharray', isActive ? 'none' : '5,5')
+                .style('opacity', isActive ? 1.0 : 0.6);
+            
+            // Draw upper hull vertices
+            this.currentStep.upper_hull.forEach(point => {
+                hullGroup.append('circle')
+                    .attr('cx', this.xScale(point.x))
+                    .attr('cy', this.yScale(point.y))
+                    .attr('r', isActive ? 7 : 5)
+                    .style('fill', '#3b82f6')
+                    .style('stroke', 'white')
+                    .style('stroke-width', 2)
+                    .style('opacity', isActive ? 1.0 : 0.6);
+            });
         }
         
-        // Lower hull
+        // Draw lower hull (green) - always show if it exists
         if (this.currentStep.lower_hull && this.currentStep.lower_hull.length > 1) {
             const line = d3.line()
                 .x(d => this.xScale(d.x))
                 .y(d => this.yScale(d.y));
+            
+            const isActive = this.currentStep.type === 'lower_hull';
             
             hullGroup.append('path')
                 .datum(this.currentStep.lower_hull)
@@ -352,26 +374,118 @@ class D3ConvexHullVisualizer {
                 .attr('class', 'hull-line lower')
                 .style('fill', 'none')
                 .style('stroke', '#10b981')
-                .style('stroke-width', this.currentStep.type === 'lower_hull' ? 4 : 2)
-                .style('stroke-dasharray', this.currentStep.type === 'lower_hull' ? 'none' : '5,5');
+                .style('stroke-width', isActive ? 4 : 2)
+                .style('stroke-dasharray', isActive ? 'none' : '5,5')
+                .style('opacity', isActive ? 1.0 : 0.6);
+            
+            // Draw lower hull vertices
+            this.currentStep.lower_hull.forEach(point => {
+                hullGroup.append('circle')
+                    .attr('cx', this.xScale(point.x))
+                    .attr('cy', this.yScale(point.y))
+                    .attr('r', isActive ? 7 : 5)
+                    .style('fill', '#10b981')
+                    .style('stroke', 'white')
+                    .style('stroke-width', 2)
+                    .style('opacity', isActive ? 1.0 : 0.6);
+            });
         }
         
-        // Current hull being built
-        if (this.currentStep.current_hull && this.currentStep.current_hull.length > 1) {
-            const line = d3.line()
-                .x(d => this.xScale(d.x))
-                .y(d => this.yScale(d.y));
-            
+        // Highlight the point being processed
+        if (this.currentStep.current_point && (this.currentStep.phase === 'processing' || this.currentStep.phase === 'added')) {
+            const point = this.currentStep.current_point;
             const color = this.currentStep.type === 'upper_hull' ? '#3b82f6' : '#10b981';
             
-            hullGroup.append('path')
-                .datum(this.currentStep.current_hull)
-                .attr('d', line)
-                .attr('class', 'hull-line current')
+            // Draw a larger circle around the current point
+            hullGroup.append('circle')
+                .attr('cx', this.xScale(point.x))
+                .attr('cy', this.yScale(point.y))
+                .attr('r', 12)
                 .style('fill', 'none')
                 .style('stroke', color)
-                .style('stroke-width', 4)
-                .style('stroke-linejoin', 'round');
+                .style('stroke-width', 3)
+                .style('opacity', 0.8);
+        }
+        
+        // Show turn testing visualization
+        if (this.currentStep.phase === 'testing' && this.currentStep.test_points && this.currentStep.test_points.length === 3) {
+            const [p1, p2, p3] = this.currentStep.test_points;
+            const isLeftTurn = this.currentStep.is_left_turn;
+            const testColor = isLeftTurn ? '#10b981' : '#ef4444';
+            
+            // Draw the triangle formed by the three test points
+            const trianglePath = `M ${this.xScale(p1.x)} ${this.yScale(p1.y)} L ${this.xScale(p2.x)} ${this.yScale(p2.y)} L ${this.xScale(p3.x)} ${this.yScale(p3.y)} Z`;
+            
+            hullGroup.append('path')
+                .attr('d', trianglePath)
+                .style('fill', testColor)
+                .style('fill-opacity', 0.2)
+                .style('stroke', testColor)
+                .style('stroke-width', 2)
+                .style('stroke-dasharray', '4,2');
+            
+            // Add turn direction indicator
+            const centerX = (this.xScale(p1.x) + this.xScale(p2.x) + this.xScale(p3.x)) / 3;
+            const centerY = (this.yScale(p1.y) + this.yScale(p2.y) + this.yScale(p3.y)) / 3;
+            
+            const turnSymbol = isLeftTurn ? '↺' : '↻';
+            const turnText = isLeftTurn ? 'Left Turn' : 'Right Turn';
+            
+            hullGroup.append('text')
+                .attr('x', centerX)
+                .attr('y', centerY - 5)
+                .text(turnSymbol)
+                .style('fill', testColor)
+                .style('font-size', '16px')
+                .style('font-weight', 'bold')
+                .style('text-anchor', 'middle');
+            
+            hullGroup.append('text')
+                .attr('x', centerX)
+                .attr('y', centerY + 15)
+                .text(turnText)
+                .style('fill', testColor)
+                .style('font-size', '10px')
+                .style('font-weight', 'bold')
+                .style('text-anchor', 'middle');
+        }
+        
+        // Show acceptance with green checkmark
+        if (this.currentStep.phase === 'accepted') {
+            const point = this.currentStep.current_point;
+            
+            hullGroup.append('text')
+                .attr('x', this.xScale(point.x))
+                .attr('y', this.yScale(point.y) - 15)
+                .text('✓')
+                .style('fill', '#10b981')
+                .style('font-size', '16px')
+                .style('font-weight', 'bold')
+                .style('text-anchor', 'middle');
+        }
+        
+        // Show the point being popped with a red X
+        if (this.currentStep.phase === 'popping' && this.currentStep.popped_point) {
+            const point = this.currentStep.popped_point;
+            
+            // Draw red X over the popped point
+            const size = 8;
+            hullGroup.append('g')
+                .attr('transform', `translate(${this.xScale(point.x)}, ${this.yScale(point.y)})`)
+                .selectAll('line')
+                .data([
+                    {x1: -size, y1: -size, x2: size, y2: size},
+                    {x1: -size, y1: size, x2: size, y2: -size}
+                ])
+                .enter()
+                .append('line')
+                .attr('x1', d => d.x1)
+                .attr('y1', d => d.y1)
+                .attr('x2', d => d.x2)
+                .attr('y2', d => d.y2)
+                .style('stroke', '#ef4444')
+                .style('stroke-width', 3)
+                .style('stroke-linecap', 'round');
         }
     }
 
@@ -433,55 +547,180 @@ class D3ConvexHullVisualizer {
                 .style('stroke-width', 2);
         }
         
-        // Draw line from current to candidate point (orange dashed)
-        if (this.currentStep.current_point && this.currentStep.candidate_point) {
-            hullGroup.append('line')
-                .attr('x1', this.xScale(this.currentStep.current_point.x))
-                .attr('y1', this.yScale(this.currentStep.current_point.y))
-                .attr('x2', this.xScale(this.currentStep.candidate_point.x))
-                .attr('y2', this.yScale(this.currentStep.candidate_point.y))
-                .style('stroke', '#f59e0b')
-                .style('stroke-width', 2)
-                .style('stroke-dasharray', '5,5')
-                .style('opacity', 0.7);
+        // Show intermediate edges during Jarvis March
+        if (this.currentStep.type === 'jarvis_step') {
+            // Draw dotted line from current point to all other points to show "wrapping" concept
+            const current = this.currentStep.current_point;
+            if (current && this.points) {
+                // Draw faint dotted lines to all remaining points
+                this.points.forEach(point => {
+                    if (point.x !== current.x || point.y !== current.y) {
+                        // Skip points already in hull
+                        const inHull = currentHull && currentHull.some(hp => hp.x === point.x && hp.y === point.y);
+                        if (!inHull) {
+                            hullGroup.append('line')
+                                .attr('x1', this.xScale(current.x))
+                                .attr('y1', this.yScale(current.y))
+                                .attr('x2', this.xScale(point.x))
+                                .attr('y2', this.yScale(point.y))
+                                .style('stroke', '#d1d5db')
+                                .style('stroke-width', 1)
+                                .style('stroke-dasharray', '2,4')
+                                .style('opacity', 0.3);
+                        }
+                    }
+                });
+            }
         }
         
-        // Draw test line (for testing phase - yellow dashed)
-        if (this.currentStep.type === 'testing' && this.currentStep.current_point && this.currentStep.testing_point) {
-            hullGroup.append('line')
-                .attr('x1', this.xScale(this.currentStep.current_point.x))
-                .attr('y1', this.yScale(this.currentStep.current_point.y))
-                .attr('x2', this.xScale(this.currentStep.testing_point.x))
-                .attr('y2', this.yScale(this.currentStep.testing_point.y))
-                .style('stroke', '#eab308')
-                .style('stroke-width', 2)
-                .style('stroke-dasharray', '5,5')
-                .style('opacity', 0.7);
+        // Enhanced visualization for testing steps
+        if (this.currentStep.type === 'testing') {
+            const current = this.currentStep.current_point;
+            const candidate = this.currentStep.candidate;  // Current best candidate
+            const testingPoint = this.currentStep.testing_point;  // Point being tested
+            
+            // Draw line from current to candidate (current best) - green dotted
+            if (current && candidate) {
+                hullGroup.append('line')
+                    .attr('x1', this.xScale(current.x))
+                    .attr('y1', this.yScale(current.y))
+                    .attr('x2', this.xScale(candidate.x))
+                    .attr('y2', this.yScale(candidate.y))
+                    .style('stroke', '#10b981')
+                    .style('stroke-width', 3)
+                    .style('stroke-dasharray', '8,4')
+                    .style('opacity', 0.7);
+                
+                // Label for current best
+                hullGroup.append('text')
+                    .attr('x', (this.xScale(current.x) + this.xScale(candidate.x)) / 2)
+                    .attr('y', (this.yScale(current.y) + this.yScale(candidate.y)) / 2 - 10)
+                    .text('Current Best')
+                    .style('fill', '#10b981')
+                    .style('font-size', '11px')
+                    .style('font-weight', 'bold')
+                    .style('text-anchor', 'middle');
+            }
+            
+            // Draw line from current to testing point - dotted orange/red based on result
+            if (current && testingPoint) {
+                const isGoodCandidate = this.currentStep.is_better;
+                const testColor = isGoodCandidate ? '#f59e0b' : '#ef4444';
+                
+                hullGroup.append('line')
+                    .attr('x1', this.xScale(current.x))
+                    .attr('y1', this.yScale(current.y))
+                    .attr('x2', this.xScale(testingPoint.x))
+                    .attr('y2', this.yScale(testingPoint.y))
+                    .style('stroke', testColor)
+                    .style('stroke-width', 4)
+                    .style('stroke-dasharray', '6,3')
+                    .style('opacity', 0.9);
+                
+                // Add orientation indicator
+                const midX = (this.xScale(current.x) + this.xScale(testingPoint.x)) / 2;
+                const midY = (this.yScale(current.y) + this.yScale(testingPoint.y)) / 2;
+                
+                // Orientation arrow or symbol
+                const orientationText = this.currentStep.orientation === 'counter_clockwise' ? '↺' : 
+                                      this.currentStep.orientation === 'clockwise' ? '↻' : '→';
+                
+                hullGroup.append('text')
+                    .attr('x', midX)
+                    .attr('y', midY - 15)
+                    .text(orientationText)
+                    .style('fill', testColor)
+                    .style('font-size', '18px')
+                    .style('font-weight', 'bold')
+                    .style('text-anchor', 'middle');
+                
+                // Result label
+                hullGroup.append('text')
+                    .attr('x', midX)
+                    .attr('y', midY + 20)
+                    .text(isGoodCandidate ? 'Better!' : 'Worse')
+                    .style('fill', testColor)
+                    .style('font-size', '11px')
+                    .style('font-weight', 'bold')
+                    .style('text-anchor', 'middle');
+            }
+        }
+        
+        // Show candidate selection with solid line
+        if (this.currentStep.type === 'candidate_selected') {
+            const current = this.currentStep.current_point;
+            const selected = this.currentStep.selected_candidate;
+            
+            if (current && selected) {
+                // Highlight the selected candidate with a thick solid green line
+                hullGroup.append('line')
+                    .attr('x1', this.xScale(current.x))
+                    .attr('y1', this.yScale(current.y))
+                    .attr('x2', this.xScale(selected.x))
+                    .attr('y2', this.yScale(selected.y))
+                    .style('stroke', '#10b981')
+                    .style('stroke-width', 6)
+                    .style('opacity', 1.0);
+                
+                // Add "SELECTED" label
+                const midX = (this.xScale(current.x) + this.xScale(selected.x)) / 2;
+                const midY = (this.yScale(current.y) + this.yScale(selected.y)) / 2;
+                
+                hullGroup.append('text')
+                    .attr('x', midX)
+                    .attr('y', midY - 10)
+                    .text('SELECTED')
+                    .style('fill', '#10b981')
+                    .style('font-size', '12px')
+                    .style('font-weight', 'bold')
+                    .style('text-anchor', 'middle');
+            }
         }
     }
 
     renderChanHull() {
         const hullGroup = this.groups.hull;
-        const colors = ['red', 'blue', 'green', 'orange', 'purple', 'brown', 'pink', 'cyan'];
-        
-        // Debug logging
-        console.log('=== Chan Hull Debug ===');
-        console.log('Step type:', this.currentStep.type);
-        console.log('Group index:', this.currentStep.group_idx);
-        console.log('all_mini_hulls exists:', !!this.currentStep.all_mini_hulls);
-        if (this.currentStep.all_mini_hulls) {
-            console.log('all_mini_hulls length:', this.currentStep.all_mini_hulls.length);
-            console.log('all_mini_hulls content:', this.currentStep.all_mini_hulls);
-        }
-        console.log('mini_hull exists:', !!this.currentStep.mini_hull);
-        if (this.currentStep.mini_hull) {
-            console.log('mini_hull length:', this.currentStep.mini_hull.length);
-        }
+        const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#f97316', '#ec4899', '#06b6d4'];
         
         if (this.currentStep.type === 'mini_hull') {
-            // Phase 1: Computing mini-hulls - ALWAYS show all computed mini-hulls
+            // Phase 1: Computing mini-hulls - show group boundaries and computed hulls
             
-            // Draw all computed mini-hulls so far (this is the key fix!)
+            // First, show all group boundaries (light colored rectangles)
+            if (this.currentStep.all_groups) {
+                this.currentStep.all_groups.forEach((group, i) => {
+                    if (group && group.length > 0) {
+                        const color = colors[i % colors.length];
+                        
+                        // Draw bounding box for each group
+                        const xExtent = d3.extent(group, d => d.x);
+                        const yExtent = d3.extent(group, d => d.y);
+                        const padding = 10;
+                        
+                        hullGroup.append('rect')
+                            .attr('x', this.xScale(xExtent[0]) - padding)
+                            .attr('y', this.yScale(yExtent[1]) - padding)
+                            .attr('width', this.xScale(xExtent[1]) - this.xScale(xExtent[0]) + 2 * padding)
+                            .attr('height', this.yScale(yExtent[0]) - this.yScale(yExtent[1]) + 2 * padding)
+                            .style('fill', color)
+                            .style('fill-opacity', 0.1)
+                            .style('stroke', color)
+                            .style('stroke-width', 2)
+                            .style('stroke-dasharray', '5,5')
+                            .style('opacity', 0.6);
+                        
+                        // Add group label
+                        hullGroup.append('text')
+                            .attr('x', this.xScale(xExtent[0]) - padding + 5)
+                            .attr('y', this.yScale(yExtent[1]) - padding + 15)
+                            .text(`Group ${i + 1}`)
+                            .style('fill', color)
+                            .style('font-size', '12px')
+                            .style('font-weight', 'bold');
+                    }
+                });
+            }
+            
+            // Draw all computed mini-hulls so far
             if (this.currentStep.all_mini_hulls) {
                 this.currentStep.all_mini_hulls.forEach((hull, i) => {
                     if (hull && hull.length >= 2) {
@@ -495,7 +734,7 @@ class D3ConvexHullVisualizer {
                                 .attr('x2', this.xScale(hull[1].x))
                                 .attr('y2', this.yScale(hull[1].y))
                                 .style('stroke', color)
-                                .style('stroke-width', 3);
+                                .style('stroke-width', 4);
                         } else {
                             // Draw polygon for 3+ point hull
                             const line = d3.line()
@@ -517,7 +756,7 @@ class D3ConvexHullVisualizer {
                                 .attr('d', line)
                                 .style('fill', 'none')
                                 .style('stroke', color)
-                                .style('stroke-width', 3);
+                                .style('stroke-width', 4);
                         }
                         
                         // Draw hull vertices as circles
@@ -525,7 +764,7 @@ class D3ConvexHullVisualizer {
                             hullGroup.append('circle')
                                 .attr('cx', this.xScale(point.x))
                                 .attr('cy', this.yScale(point.y))
-                                .attr('r', 6)
+                                .attr('r', 7)
                                 .style('fill', color)
                                 .style('stroke', 'white')
                                 .style('stroke-width', 2);
@@ -534,23 +773,24 @@ class D3ConvexHullVisualizer {
                 });
             }
             
-            // Highlight current mini-hull being computed with thicker outline
+            // Highlight current mini-hull being computed with pulsing animation
             if (this.currentStep.mini_hull && this.currentStep.group_idx !== undefined) {
                 const currentColor = colors[this.currentStep.group_idx % colors.length];
                 const hull = this.currentStep.mini_hull;
                 if (hull.length >= 2) {
                     if (hull.length === 2) {
-                        // Highlight line with thicker stroke
+                        // Highlight line with thicker stroke and glow effect
                         hullGroup.append('line')
                             .attr('x1', this.xScale(hull[0].x))
                             .attr('y1', this.yScale(hull[0].y))
                             .attr('x2', this.xScale(hull[1].x))
                             .attr('y2', this.yScale(hull[1].y))
                             .style('stroke', currentColor)
-                            .style('stroke-width', 5)
-                            .style('opacity', 0.9);
+                            .style('stroke-width', 6)
+                            .style('opacity', 0.9)
+                            .style('filter', 'drop-shadow(0 0 6px ' + currentColor + ')');
                     } else {
-                        // Highlight polygon with thicker outline
+                        // Highlight polygon with thicker outline and glow
                         const line = d3.line()
                             .x(d => this.xScale(d.x))
                             .y(d => this.yScale(d.y))
@@ -560,89 +800,125 @@ class D3ConvexHullVisualizer {
                             .attr('d', line)
                             .style('fill', 'none')
                             .style('stroke', currentColor)
-                            .style('stroke-width', 5)
-                            .style('opacity', 0.9);
+                            .style('stroke-width', 6)
+                            .style('opacity', 0.9)
+                            .style('filter', 'drop-shadow(0 0 6px ' + currentColor + ')');
                     }
                 }
             }
             
-        } else if (this.currentStep.type === 'jarvis') {
-            // Phase 2: Jarvis March merging - show faded mini-hulls and growing final hull
+        } else if (this.currentStep.type === 'jarvis_phase' || this.currentStep.type === 'connecting_edge') {
+            // Phase 2: Jarvis March merging - show visible mini-hulls and growing final hull
             
-            // Draw mini-hulls in faded colors with dashed lines
+            // Draw mini-hulls with dotted lines and faint colors (MORE VISIBLE)
             if (this.currentStep.mini_hulls) {
                 this.currentStep.mini_hulls.forEach((hull, i) => {
                     if (hull && hull.length >= 2) {
                         const color = colors[i % colors.length];
+                        const isConnectingHull = this.currentStep.connecting_hull_idx === i;
                         
                         if (hull.length === 2) {
-                            // Faded line
+                            // Dotted line - more visible
                             hullGroup.append('line')
                                 .attr('x1', this.xScale(hull[0].x))
                                 .attr('y1', this.yScale(hull[0].y))
                                 .attr('x2', this.xScale(hull[1].x))
                                 .attr('y2', this.yScale(hull[1].y))
                                 .style('stroke', color)
-                                .style('stroke-width', 2)
-                                .style('stroke-dasharray', '5,5')
-                                .style('opacity', 0.4);
+                                .style('stroke-width', isConnectingHull ? 4 : 3)
+                                .style('stroke-dasharray', '8,4')
+                                .style('opacity', isConnectingHull ? 0.8 : 0.6);
                         } else {
-                            // Faded polygon
+                            // Dotted polygon - more visible
                             const line = d3.line()
                                 .x(d => this.xScale(d.x))
                                 .y(d => this.yScale(d.y))
                                 .curve(d3.curveLinearClosed);
                             
+                            // Faint fill
                             hullGroup.append('path')
                                 .datum(hull)
                                 .attr('d', line)
                                 .style('fill', color)
-                                .style('fill-opacity', 0.1)
+                                .style('fill-opacity', isConnectingHull ? 0.2 : 0.1)
+                                .style('stroke', 'none');
+                            
+                            // Dotted outline
+                            hullGroup.append('path')
+                                .datum(hull)
+                                .attr('d', line)
+                                .style('fill', 'none')
                                 .style('stroke', color)
-                                .style('stroke-width', 1)
-                                .style('stroke-dasharray', '3,3')
-                                .style('opacity', 0.4);
+                                .style('stroke-width', isConnectingHull ? 3 : 2)
+                                .style('stroke-dasharray', '6,3')
+                                .style('opacity', isConnectingHull ? 0.8 : 0.6);
                         }
+                        
+                        // Draw mini-hull vertices as smaller circles
+                        hull.forEach(point => {
+                            hullGroup.append('circle')
+                                .attr('cx', this.xScale(point.x))
+                                .attr('cy', this.yScale(point.y))
+                                .attr('r', isConnectingHull ? 6 : 4)
+                                .style('fill', color)
+                                .style('stroke', 'white')
+                                .style('stroke-width', 1)
+                                .style('opacity', isConnectingHull ? 0.8 : 0.6);
+                        });
                     }
                 });
             }
             
-            // Draw final hull being built (black line with yellow fill when complete)
-            if (this.currentStep.final_hull && this.currentStep.final_hull.length > 1) {
+            // Draw connecting edge being considered (dotted line)
+            if (this.currentStep.type === 'connecting_edge' && this.currentStep.current_point && this.currentStep.next_point) {
+                const current = this.currentStep.current_point;
+                const next = this.currentStep.next_point;
+                
+                hullGroup.append('line')
+                    .attr('x1', this.xScale(current.x))
+                    .attr('y1', this.yScale(current.y))
+                    .attr('x2', this.xScale(next.x))
+                    .attr('y2', this.yScale(next.y))
+                    .style('stroke', '#ff6b35')
+                    .style('stroke-width', 4)
+                    .style('stroke-dasharray', '10,5')
+                    .style('opacity', 0.9);
+                
+                // Add connecting label
+                const midX = (this.xScale(current.x) + this.xScale(next.x)) / 2;
+                const midY = (this.yScale(current.y) + this.yScale(next.y)) / 2;
+                
+                hullGroup.append('text')
+                    .attr('x', midX)
+                    .attr('y', midY - 10)
+                    .text('Connecting')
+                    .style('fill', '#ff6b35')
+                    .style('font-size', '12px')
+                    .style('font-weight', 'bold')
+                    .style('text-anchor', 'middle');
+            }
+            
+            // Draw final hull being built (thick black line)
+            if (this.currentStep.hull_so_far && this.currentStep.hull_so_far.length > 1) {
                 const line = d3.line()
                     .x(d => this.xScale(d.x))
                     .y(d => this.yScale(d.y));
                 
-                // If hull is complete (closed), add yellow fill first
-                if (this.currentStep.final_hull.length > 2) {
-                    const closedLine = d3.line()
-                        .x(d => this.xScale(d.x))
-                        .y(d => this.yScale(d.y))
-                        .curve(d3.curveLinearClosed);
-                    
-                    hullGroup.append('path')
-                        .datum(this.currentStep.final_hull)
-                        .attr('d', closedLine)
-                        .style('fill', 'yellow')
-                        .style('fill-opacity', 0.3)
-                        .style('stroke', 'none');
-                }
-                
                 // Hull line (black, thick)
                 hullGroup.append('path')
-                    .datum(this.currentStep.final_hull)
+                    .datum(this.currentStep.hull_so_far)
                     .attr('d', line)
                     .style('fill', 'none')
-                    .style('stroke', 'black')
-                    .style('stroke-width', 4);
+                    .style('stroke', '#000000')
+                    .style('stroke-width', 5);
                 
                 // Hull vertices as black circles
-                this.currentStep.final_hull.forEach(point => {
+                this.currentStep.hull_so_far.forEach(point => {
                     hullGroup.append('circle')
                         .attr('cx', this.xScale(point.x))
                         .attr('cy', this.yScale(point.y))
                         .attr('r', 8)
-                        .style('fill', 'black')
+                        .style('fill', '#000000')
                         .style('stroke', 'white')
                         .style('stroke-width', 2);
                 });
@@ -664,8 +940,8 @@ class D3ConvexHullVisualizer {
             currentHull = this.currentStep.hull_after;
         }
         
-        // Draw current hull
-        if (currentHull) {
+        // Draw current hull (before modification)
+        if (currentHull && this.currentStep.type !== 'splice_done') {
             const line = d3.line()
                 .x(d => this.xScale(d.x))
                 .y(d => this.yScale(d.y))
@@ -680,13 +956,16 @@ class D3ConvexHullVisualizer {
                     .style('stroke', 'none');
             }
             
-            // Hull outline
+            // Hull outline - solid for stable hull, dashed when being modified
+            const isDuringModification = this.currentStep.type === 'tangents';
             hullGroup.append('path')
                 .datum(currentHull)
                 .attr('d', line)
                 .style('fill', 'none')
                 .style('stroke', '#3b82f6')
-                .style('stroke-width', this.currentStep.type === 'complete' ? 4 : 3);
+                .style('stroke-width', this.currentStep.type === 'complete' ? 4 : 3)
+                .style('stroke-dasharray', isDuringModification ? '5,3' : 'none')
+                .style('opacity', isDuringModification ? 0.7 : 1.0);
             
             // Draw hull vertices
             currentHull.forEach(point => {
@@ -696,53 +975,81 @@ class D3ConvexHullVisualizer {
                     .attr('r', 7)
                     .style('fill', '#3b82f6')
                     .style('stroke', 'white')
-                    .style('stroke-width', 2);
+                    .style('stroke-width', 2)
+                    .style('opacity', isDuringModification ? 0.7 : 1.0);
             });
         }
         
-        // Draw hull after (for splice_done steps) - show the new hull
+        // Show intermediate dotted lines from new point to all hull vertices during tangent finding
+        if (this.currentStep.type === 'tangents' && this.currentStep.point && this.currentStep.hull_before) {
+            const newPoint = this.currentStep.point;
+            
+            // Draw dotted lines from new point to all hull vertices
+            this.currentStep.hull_before.forEach(hullVertex => {
+                hullGroup.append('line')
+                    .attr('x1', this.xScale(newPoint.x))
+                    .attr('y1', this.yScale(newPoint.y))
+                    .attr('x2', this.xScale(hullVertex.x))
+                    .attr('y2', this.yScale(hullVertex.y))
+                    .style('stroke', '#d1d5db')
+                    .style('stroke-width', 1)
+                    .style('stroke-dasharray', '3,3')
+                    .style('opacity', 0.4);
+            });
+        }
+        
+        // Draw new hull after modification (solid green)
         if (this.currentStep.type === 'splice_done' && this.currentStep.hull_after && this.currentStep.hull_after.length > 2) {
             const line = d3.line()
                 .x(d => this.xScale(d.x))
                 .y(d => this.yScale(d.y))
                 .curve(d3.curveLinearClosed);
             
+            // New hull with solid green outline
             hullGroup.append('path')
                 .datum(this.currentStep.hull_after)
                 .attr('d', line)
-                .style('fill', 'none')
+                .style('fill', 'rgba(16, 185, 129, 0.1)')
                 .style('stroke', '#10b981')
-                .style('stroke-width', 4)
-                .style('stroke-dasharray', '8,4');
+                .style('stroke-width', 4);
+            
+            // Draw new hull vertices
+            this.currentStep.hull_after.forEach(point => {
+                hullGroup.append('circle')
+                    .attr('cx', this.xScale(point.x))
+                    .attr('cy', this.yScale(point.y))
+                    .attr('r', 7)
+                    .style('fill', '#10b981')
+                    .style('stroke', 'white')
+                    .style('stroke-width', 2);
+            });
         }
         
-        // Draw tangent lines for tangent steps
-        if (this.currentStep.type === 'tangents' && this.currentStep.candidate_point) {
-            const candidate = this.currentStep.candidate_point;
+        // Show preview of new hull edges during tangent phase (dotted green)
+        if (this.currentStep.type === 'tangents' && this.currentStep.point && 
+            this.currentStep.right_tangent_vertex && this.currentStep.left_tangent_vertex) {
+            const newPoint = this.currentStep.point;
             
-            // Right tangent
-            if (this.currentStep.right_tangent_vertex) {
-                hullGroup.append('line')
-                    .attr('x1', this.xScale(candidate.x))
-                    .attr('y1', this.yScale(candidate.y))
-                    .attr('x2', this.xScale(this.currentStep.right_tangent_vertex.x))
-                    .attr('y2', this.yScale(this.currentStep.right_tangent_vertex.y))
-                    .style('stroke', '#f59e0b')
-                    .style('stroke-width', 3)
-                    .style('stroke-dasharray', '8,4');
-            }
+            // Draw dotted preview lines showing how the hull will be modified
+            hullGroup.append('line')
+                .attr('x1', this.xScale(this.currentStep.right_tangent_vertex.x))
+                .attr('y1', this.yScale(this.currentStep.right_tangent_vertex.y))
+                .attr('x2', this.xScale(newPoint.x))
+                .attr('y2', this.yScale(newPoint.y))
+                .style('stroke', '#10b981')
+                .style('stroke-width', 3)
+                .style('stroke-dasharray', '6,3')
+                .style('opacity', 0.8);
             
-            // Left tangent
-            if (this.currentStep.left_tangent_vertex) {
-                hullGroup.append('line')
-                    .attr('x1', this.xScale(candidate.x))
-                    .attr('y1', this.yScale(candidate.y))
-                    .attr('x2', this.xScale(this.currentStep.left_tangent_vertex.x))
-                    .attr('y2', this.yScale(this.currentStep.left_tangent_vertex.y))
-                    .style('stroke', '#8b5cf6')
-                    .style('stroke-width', 3)
-                    .style('stroke-dasharray', '8,4');
-            }
+            hullGroup.append('line')
+                .attr('x1', this.xScale(newPoint.x))
+                .attr('y1', this.yScale(newPoint.y))
+                .attr('x2', this.xScale(this.currentStep.left_tangent_vertex.x))
+                .attr('y2', this.yScale(this.currentStep.left_tangent_vertex.y))
+                .style('stroke', '#10b981')
+                .style('stroke-width', 3)
+                .style('stroke-dasharray', '6,3')
+                .style('opacity', 0.8);
         }
     }
 
@@ -752,9 +1059,11 @@ class D3ConvexHullVisualizer {
         
         if (!this.currentStep || this.currentStep.type !== 'tangents') return;
         
-        const candidate = this.currentStep.candidate_point;
+        const candidate = this.currentStep.point;
         
-        // Right tangent
+        if (!candidate) return;
+        
+        // Right tangent (orange thick dashed line)
         if (this.currentStep.right_tangent_vertex) {
             tangentGroup.append('line')
                 .attr('x1', this.xScale(candidate.x))
@@ -763,11 +1072,27 @@ class D3ConvexHullVisualizer {
                 .attr('y2', this.yScale(this.currentStep.right_tangent_vertex.y))
                 .attr('class', 'tangent-line right')
                 .style('stroke', '#f59e0b')
-                .style('stroke-width', 3)
-                .style('stroke-dasharray', '8,4');
+                .style('stroke-width', 5)
+                .style('stroke-dasharray', '10,5')
+                .style('opacity', 1.0);
+            
+            // Add label for right tangent
+            const midX = (this.xScale(candidate.x) + this.xScale(this.currentStep.right_tangent_vertex.x)) / 2;
+            const midY = (this.yScale(candidate.y) + this.yScale(this.currentStep.right_tangent_vertex.y)) / 2;
+            
+            tangentGroup.append('text')
+                .attr('x', midX)
+                .attr('y', midY - 12)
+                .text('Right Tangent')
+                .style('fill', '#f59e0b')
+                .style('font-size', '12px')
+                .style('font-weight', 'bold')
+                .style('text-anchor', 'middle')
+                .style('background', 'white')
+                .style('padding', '2px');
         }
         
-        // Left tangent
+        // Left tangent (purple thick dashed line)
         if (this.currentStep.left_tangent_vertex) {
             tangentGroup.append('line')
                 .attr('x1', this.xScale(candidate.x))
@@ -776,8 +1101,24 @@ class D3ConvexHullVisualizer {
                 .attr('y2', this.yScale(this.currentStep.left_tangent_vertex.y))
                 .attr('class', 'tangent-line left')
                 .style('stroke', '#8b5cf6')
-                .style('stroke-width', 3)
-                .style('stroke-dasharray', '8,4');
+                .style('stroke-width', 5)
+                .style('stroke-dasharray', '10,5')
+                .style('opacity', 1.0);
+            
+            // Add label for left tangent
+            const midX = (this.xScale(candidate.x) + this.xScale(this.currentStep.left_tangent_vertex.x)) / 2;
+            const midY = (this.yScale(candidate.y) + this.yScale(this.currentStep.left_tangent_vertex.y)) / 2;
+            
+            tangentGroup.append('text')
+                .attr('x', midX)
+                .attr('y', midY + 22)
+                .text('Left Tangent')
+                .style('fill', '#8b5cf6')
+                .style('font-size', '12px')
+                .style('font-weight', 'bold')
+                .style('text-anchor', 'middle')
+                .style('background', 'white')
+                .style('padding', '2px');
         }
     }
 
@@ -907,45 +1248,65 @@ class D3ConvexHullVisualizer {
         if (!this.currentStep) return '#9ca3af';
         
         // For Chan's algorithm, don't color points specially - let the hull rendering handle it
-        if (this.currentStep.type === 'mini_hull' || this.currentStep.type === 'jarvis') {
+        if (this.currentStep.type === 'mini_hull' || this.currentStep.type === 'jarvis_phase') {
             return '#9ca3af';  // Keep all points gray for Chan's algorithm
         }
         
-        // Current point
+        // Current point (red circle - the point we're starting from)
         if (this.currentStep.current_point && 
             point.x === this.currentStep.current_point.x && 
             point.y === this.currentStep.current_point.y) {
             return '#ef4444';
         }
         
-        // Testing point (Jarvis March - yellow triangle)
-        if (this.currentStep.testing_point && 
-            point.x === this.currentStep.testing_point.x && 
-            point.y === this.currentStep.testing_point.y) {
-            return '#eab308';  // Yellow like Python script
+        // Candidate being tested (orange for Jarvis March)
+        if (this.currentStep.type === 'testing' && this.currentStep.candidate && 
+            point.x === this.currentStep.candidate.x && 
+            point.y === this.currentStep.candidate.y) {
+            return this.currentStep.is_better ? '#f59e0b' : '#ef4444';  // Orange if better, red if worse
         }
         
-        // Candidate point (Jarvis March - orange square)
-        if (this.currentStep.candidate_point && 
-            point.x === this.currentStep.candidate_point.x && 
-            point.y === this.currentStep.candidate_point.y) {
-            if (this.currentStep.type === 'inside') return '#ef4444';
-            if (this.currentStep.type === 'splice_done') return '#10b981';
-            return '#f59e0b';  // Orange like Python script
+        // Next point (current best candidate - green)
+        if (this.currentStep.next_point && 
+            point.x === this.currentStep.next_point.x && 
+            point.y === this.currentStep.next_point.y) {
+            return '#10b981';
         }
         
-        // Popped point (Graham's scan)
+        // Selected candidate (bright green)
+        if (this.currentStep.type === 'candidate_selected' && this.currentStep.selected_candidate && 
+            point.x === this.currentStep.selected_candidate.x && 
+            point.y === this.currentStep.selected_candidate.y) {
+            return '#22c55e';
+        }
+        
+        // Popped point (Graham's scan) - red
         if (this.currentStep.popped_point && 
             point.x === this.currentStep.popped_point.x && 
             point.y === this.currentStep.popped_point.y) {
-            return '#f59e0b';
+            return '#ef4444';
+        }
+        
+        // Current point being processed (Graham's scan) - highlight color
+        if (this.currentStep.current_point && 
+            point.x === this.currentStep.current_point.x && 
+            point.y === this.currentStep.current_point.y &&
+            (this.currentStep.type === 'upper_hull' || this.currentStep.type === 'lower_hull')) {
+            return this.currentStep.type === 'upper_hull' ? '#3b82f6' : '#10b981';
         }
         
         // Added point (incremental)
-        if (this.currentStep.added_point && 
-            point.x === this.currentStep.added_point.x && 
-            point.y === this.currentStep.added_point.y) {
+        if (this.currentStep.point && 
+            point.x === this.currentStep.point.x && 
+            point.y === this.currentStep.point.y) {
             return '#10b981';
+        }
+        
+        // Removed point (incremental)
+        if (this.currentStep.removed_point && 
+            point.x === this.currentStep.removed_point.x && 
+            point.y === this.currentStep.removed_point.y) {
+            return '#ef4444';
         }
         
         // Tangent vertices

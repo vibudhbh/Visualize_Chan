@@ -595,17 +595,18 @@ class ModernConvexHullApp {
         
         const titles = {
             graham: {
+                sorting: `Step ${stepNum}/${totalSteps}: Sorting Points`,
                 upper_hull: {
-                    processing: `Step ${stepNum}/${totalSteps}: Processing Upper Hull`,
+                    processing: `Step ${stepNum}/${totalSteps}: Building Upper Hull`,
                     popping: `Step ${stepNum}/${totalSteps}: Removing Non-Convex Point`,
                     added: `Step ${stepNum}/${totalSteps}: Added to Upper Hull`
                 },
                 lower_hull: {
-                    processing: `Step ${stepNum}/${totalSteps}: Processing Lower Hull`,
+                    processing: `Step ${stepNum}/${totalSteps}: Building Lower Hull`,
                     popping: `Step ${stepNum}/${totalSteps}: Removing Non-Convex Point`,
                     added: `Step ${stepNum}/${totalSteps}: Added to Lower Hull`
                 },
-                complete: `Step ${stepNum}/${totalSteps}: Algorithm Complete`
+                complete: `Step ${stepNum}/${totalSteps}: Graham's Scan Complete`
             },
             jarvis: {
                 jarvis_step: `Step ${stepNum}/${totalSteps}: Gift Wrapping`,
@@ -615,6 +616,7 @@ class ModernConvexHullApp {
             chan: {
                 mini_hull: `Step ${stepNum}/${totalSteps}: Computing Mini-Hull`,
                 jarvis_phase: `Step ${stepNum}/${totalSteps}: Connecting Hulls`,
+                connecting_edge: `Step ${stepNum}/${totalSteps}: Finding Connection`,
                 complete: `Step ${stepNum}/${totalSteps}: Algorithm Complete`
             },
             incremental: {
@@ -641,17 +643,18 @@ class ModernConvexHullApp {
         // Educational descriptions that explain WHY and HOW each algorithm works
         const descriptions = {
             graham: {
+                sorting: (s) => `Graham's Scan starts by sorting all points by x-coordinate (left to right). This ordering is crucial because we'll build the upper hull by processing points left-to-right, then the lower hull right-to-left. Think of it as preparing to trace the outline of a shape systematically.`,
                 upper_hull: {
-                    processing: (s) => `Graham's Scan builds the hull in two parts. First, we create the "upper boundary" by going left to right through sorted points. We're checking if this point should be part of the top edge of our convex shape - like the top of a rubber band stretched around all points.`,
-                    popping: (s) => `This point creates an "inward bend" in our hull. For a convex shape, all turns must go outward, so we remove it. Think of tightening a rubber band - it can't have inward curves, only smooth outward curves.`,
-                    added: (s) => `This point creates a proper outward turn, so it belongs on the upper boundary. Our upper hull now has ${s.current_hull.length} points forming the top edge of our convex shape.`
+                    processing: (s) => `Building the upper hull: We process points left-to-right, maintaining only those that create "left turns" (counter-clockwise orientation). This forms the top boundary of our convex shape. Point ${s.point_index + 1} of ${s.sorted_points.length} is being considered.`,
+                    popping: (s) => `Removing point ${s.popped_point[0].toFixed(1)}, ${s.popped_point[1].toFixed(1)} because it creates a "right turn" (orientation: ${s.orientation.toFixed(3)}). For the upper hull, we need strict left turns to maintain convexity. This point would create an inward bend.`,
+                    added: (s) => `Added point ${s.current_point[0].toFixed(1)}, ${s.current_point[1].toFixed(1)} to upper hull. It creates a proper left turn, so it belongs on the upper boundary. Upper hull now has ${s.upper_hull.length} points.`
                 },
                 lower_hull: {
-                    processing: (s) => `Now we're building the "lower boundary" - the bottom edge of our convex shape. We go right to left through the sorted points, checking if each point should be part of the bottom edge of our rubber band.`,
-                    popping: (s) => `This point creates an inward bend in the lower boundary. Just like with the upper hull, we need all turns to be outward for a convex shape, so we remove this point.`,
-                    added: (s) => `This point fits perfectly on the lower boundary. Our lower hull now has ${s.current_hull.length} points. When we combine upper and lower boundaries, we'll have our complete convex shape.`
+                    processing: (s) => `Building the lower hull: We process points right-to-left, maintaining only those that create "left turns" when viewed in this direction. This forms the bottom boundary of our convex shape. Processing point ${s.point_index + 1} of ${s.sorted_points.length}.`,
+                    popping: (s) => `Removing point ${s.popped_point[0].toFixed(1)}, ${s.popped_point[1].toFixed(1)} because it creates a "right turn" (orientation: ${s.orientation.toFixed(3)}). For the lower hull, we need strict left turns to maintain convexity when processing right-to-left.`,
+                    added: (s) => `Added point ${s.current_point[0].toFixed(1)}, ${s.current_point[1].toFixed(1)} to lower hull. It creates a proper left turn in the right-to-left direction. Lower hull now has ${s.lower_hull.length} points.`
                 },
-                complete: (s) => `Graham's Scan complete! We built the convex hull by creating an upper boundary (left to right) and lower boundary (right to left), then combining them into one shape with ${s.final_hull.length} vertices.`
+                complete: (s) => `Graham's Scan complete! We built the upper hull (${s.upper_hull.length} points) and lower hull (${s.lower_hull.length} points), then combined them into the final convex hull with ${s.final_hull.length} vertices. The algorithm maintains convexity by ensuring all turns are counter-clockwise.`
             },
             jarvis: {
                 jarvis_step: (s) => `Jarvis March works like "gift wrapping" - we start at the leftmost point and keep finding the next point that makes the most outward turn. We're looking for the point that would be most "counter-clockwise" from our current position, like wrapping string around the outside of all points.`,
@@ -660,7 +663,8 @@ class ModernConvexHullApp {
             },
             chan: {
                 mini_hull: (s) => `Chan's Algorithm is clever - it divides points into small groups and finds the convex hull of each group first. We're working on group ${s.group_idx + 1} of ${s.num_groups}. This "divide and conquer" approach makes the algorithm faster for large datasets.`,
-                jarvis_phase: () => `Now we use Jarvis March to connect all the mini-hulls together. Instead of checking every single point, we only need to check the boundaries of each mini-hull. This is much faster!`,
+                jarvis_phase: (s) => `Now we use Jarvis March to connect all the mini-hulls together. Instead of checking every single point, we only need to check the boundaries of each mini-hull (shown as dotted polygons). This is much faster than checking all ${s.mini_hulls ? s.mini_hulls.flat().length : 'original'} points!`,
+                connecting_edge: (s) => `Finding the best connection from current point ${s.current_point ? `(${s.current_point.x.toFixed(1)}, ${s.current_point.y.toFixed(1)})` : ''} to mini-hull ${s.connecting_hull_idx + 1}. The dotted orange line shows the edge being considered for the final hull.`,
                 complete: (s) => `Chan's Algorithm complete! We divided the problem into smaller pieces (mini-hulls), then efficiently combined them. This hybrid approach gives us the best of both worlds.`
             },
             incremental: {

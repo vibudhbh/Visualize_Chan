@@ -8,6 +8,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import json
 import math
+import os
 import time
 import traceback
 from typing import List, Tuple, Dict, Any
@@ -18,129 +19,371 @@ jarvis_steps = []
 chan_steps = []
 incremental_steps = []
 
-def cross_product(o: Tuple[float, float], a: Tuple[float, float], b: Tuple[float, float]) -> float:
-    """Calculate cross product of vectors OA and OB"""
-    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+def orientation(p: Tuple[float, float], q: Tuple[float, float], r: Tuple[float, float]) -> float:
+    """
+    Calculate orientation of ordered triplet (p, q, r).
+    Uses the determinant method from lecture slides.
+    
+    Returns:
+        > 0: Counter-clockwise (positive orientation, left-hand turn)
+        < 0: Clockwise (negative orientation, right-hand turn)
+        = 0: Collinear (zero orientation)
+    """
+    # Calculate the determinant (cross product)
+    # This is equivalent to: (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x)
+    val = (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+    
+    if abs(val) < 1e-10:  # Handle floating point precision
+        return 0
+    return val
 
 def distance_squared(p1: Tuple[float, float], p2: Tuple[float, float]) -> float:
     """Calculate squared distance between two points"""
     return (p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2
 
 def grahams_scan(points: List[Tuple[float, float]]) -> List[Tuple[float, float]]:
-    """Graham's Scan algorithm for convex hull"""
+    """
+    Graham's Scan Algorithm following lecture slides 43-55
+    
+    The algorithm computes the upper and lower hulls separately,
+    then combines them to form the complete convex hull.
+    
+    Steps:
+    1. Sort the points according to increasing order of their x-coordinates
+    2. Build upper hull (left to right)
+    3. Build lower hull (right to left)
+    4. Combine hulls
+    """
     global graham_steps
     graham_steps = []
     
-    if len(points) < 3:
+    n = len(points)
+    if n < 3:
         return points
     
-    # Sort points by x-coordinate (and by y-coordinate in case of tie)
+    # Step 1: Sort points by x-coordinate (and by y if x is same)
     sorted_points = sorted(points, key=lambda p: (p[0], p[1]))
     
-    # Build lower hull
-    lower = []
-    for p in sorted_points:
-        while len(lower) >= 2 and cross_product(lower[-2], lower[-1], p) <= 0:
-            popped = lower.pop()
-            graham_steps.append({
-                'type': 'lower_hull',
-                'phase': 'popping',
-                'current_point': p,
-                'popped_point': popped,
-                'current_hull': lower.copy(),
-                'description': f'Removing point {popped} - creates inward turn'
-            })
-        lower.append(p)
-        graham_steps.append({
-            'type': 'lower_hull', 
-            'phase': 'added',
-            'current_point': p,
-            'current_hull': lower.copy(),
-            'description': f'Added point {p} to lower hull'
-        })
+    graham_steps.append({
+        'type': 'sorting',
+        'phase': 'complete',
+        'sorted_points': sorted_points.copy(),
+        'description': f'Sorted {len(points)} points by x-coordinate'
+    })
     
-    # Build upper hull
-    upper = []
-    for p in reversed(sorted_points):
-        while len(upper) >= 2 and cross_product(upper[-2], upper[-1], p) <= 0:
-            popped = upper.pop()
+    # Build UPPER HULL (from slide 44)
+    # Process points from left to right for upper hull
+    upper_hull = []
+    
+    for i, p in enumerate(sorted_points):
+        # Record step before processing
+        graham_steps.append({
+            'type': 'upper_hull',
+            'phase': 'processing',
+            'current_point': p,
+            'point_index': i,
+            'sorted_points': sorted_points.copy(),
+            'upper_hull': upper_hull.copy(),
+            'lower_hull': [],
+            'about_to_add': True,
+            'description': f'Processing point {p} for upper hull'
+        })
+        
+        # Pop points off the stack if they fail to satisfy left-hand turn property
+        # We want to maintain left-hand turn property (positive orientation)
+        while len(upper_hull) >= 2:
+            # Check orientation of (p, H[top], H[top-1])
+            # We check orientation(p, upper_hull[-1], upper_hull[-2])
+            orient = orientation(p, upper_hull[-1], upper_hull[-2])
+            
+            # Record testing step to show the turn test
             graham_steps.append({
                 'type': 'upper_hull',
-                'phase': 'popping', 
+                'phase': 'testing',
                 'current_point': p,
-                'popped_point': popped,
-                'current_hull': upper.copy(),
-                'description': f'Removing point {popped} - creates inward turn'
+                'point_index': i,
+                'sorted_points': sorted_points.copy(),
+                'upper_hull': upper_hull.copy(),
+                'lower_hull': [],
+                'test_points': [upper_hull[-2], upper_hull[-1], p],
+                'orientation': orient,
+                'is_left_turn': orient > 0,
+                'description': f'Testing turn: {upper_hull[-2]} → {upper_hull[-1]} → {p} (orientation: {orient:.3f})'
             })
-        upper.append(p)
+            
+            if orient <= 0:  # Not a strict left turn
+                popped_point = upper_hull[-1]
+                
+                # Record popping step
+                graham_steps.append({
+                    'type': 'upper_hull',
+                    'phase': 'popping',
+                    'current_point': p,
+                    'point_index': i,
+                    'sorted_points': sorted_points.copy(),
+                    'upper_hull': upper_hull.copy(),
+                    'lower_hull': [],
+                    'popped_point': popped_point,
+                    'orientation': orient,
+                    'description': f'Popping {popped_point} - not a left turn (orientation: {orient:.3f})'
+                })
+                
+                upper_hull.pop()
+            else:
+                # Record acceptance step
+                graham_steps.append({
+                    'type': 'upper_hull',
+                    'phase': 'accepted',
+                    'current_point': p,
+                    'point_index': i,
+                    'sorted_points': sorted_points.copy(),
+                    'upper_hull': upper_hull.copy(),
+                    'lower_hull': [],
+                    'orientation': orient,
+                    'description': f'Left turn confirmed - keeping current hull structure'
+                })
+                break
+        
+        upper_hull.append(p)
+        
+        # Record step after adding point
         graham_steps.append({
             'type': 'upper_hull',
             'phase': 'added',
-            'current_point': p, 
-            'current_hull': upper.copy(),
-            'description': f'Added point {p} to upper hull'
+            'current_point': p,
+            'point_index': i,
+            'sorted_points': sorted_points.copy(),
+            'upper_hull': upper_hull.copy(),
+            'lower_hull': [],
+            'description': f'Added {p} to upper hull - now has {len(upper_hull)} points'
         })
     
-    # Remove last point of each half because it's repeated
-    hull = lower[:-1] + upper[:-1]
+    # Build LOWER HULL (from slide 53)
+    # Process points from right to left for lower hull
+    lower_hull = []
     
+    for i in range(n - 1, -1, -1):
+        p = sorted_points[i]
+        
+        # Record step before processing
+        graham_steps.append({
+            'type': 'lower_hull',
+            'phase': 'processing',
+            'current_point': p,
+            'point_index': i,
+            'sorted_points': sorted_points.copy(),
+            'upper_hull': upper_hull.copy(),
+            'lower_hull': lower_hull.copy(),
+            'about_to_add': True,
+            'description': f'Processing point {p} for lower hull'
+        })
+        
+        # Same logic but processing in reverse order
+        while len(lower_hull) >= 2:
+            orient = orientation(p, lower_hull[-1], lower_hull[-2])
+            
+            # Record testing step to show the turn test
+            graham_steps.append({
+                'type': 'lower_hull',
+                'phase': 'testing',
+                'current_point': p,
+                'point_index': i,
+                'sorted_points': sorted_points.copy(),
+                'upper_hull': upper_hull.copy(),
+                'lower_hull': lower_hull.copy(),
+                'test_points': [lower_hull[-2], lower_hull[-1], p],
+                'orientation': orient,
+                'is_left_turn': orient > 0,
+                'description': f'Testing turn: {lower_hull[-2]} → {lower_hull[-1]} → {p} (orientation: {orient:.3f})'
+            })
+            
+            if orient <= 0:  # Not a strict left turn
+                popped_point = lower_hull[-1]
+                
+                # Record popping step
+                graham_steps.append({
+                    'type': 'lower_hull',
+                    'phase': 'popping',
+                    'current_point': p,
+                    'point_index': i,
+                    'sorted_points': sorted_points.copy(),
+                    'upper_hull': upper_hull.copy(),
+                    'lower_hull': lower_hull.copy(),
+                    'popped_point': popped_point,
+                    'orientation': orient,
+                    'description': f'Popping {popped_point} - not a left turn (orientation: {orient:.3f})'
+                })
+                
+                lower_hull.pop()
+            else:
+                # Record acceptance step
+                graham_steps.append({
+                    'type': 'lower_hull',
+                    'phase': 'accepted',
+                    'current_point': p,
+                    'point_index': i,
+                    'sorted_points': sorted_points.copy(),
+                    'upper_hull': upper_hull.copy(),
+                    'lower_hull': lower_hull.copy(),
+                    'orientation': orient,
+                    'description': f'Left turn confirmed - keeping current hull structure'
+                })
+                break
+        
+        lower_hull.append(p)
+        
+        # Record step after adding point
+        graham_steps.append({
+            'type': 'lower_hull',
+            'phase': 'added',
+            'current_point': p,
+            'point_index': i,
+            'sorted_points': sorted_points.copy(),
+            'upper_hull': upper_hull.copy(),
+            'lower_hull': lower_hull.copy(),
+            'description': f'Added {p} to lower hull - now has {len(lower_hull)} points'
+        })
+    
+    # Combine upper and lower hulls
+    # Remove last point of each half because it's repeated
+    # (The leftmost and rightmost points appear in both hulls)
+    convex_hull = upper_hull[:-1] + lower_hull[:-1]
+    
+    # Record final step
     graham_steps.append({
         'type': 'complete',
-        'final_hull': hull,
-        'description': f'Graham\'s Scan complete - hull has {len(hull)} vertices'
+        'upper_hull': upper_hull.copy(),
+        'lower_hull': lower_hull.copy(),
+        'final_hull': convex_hull.copy(),
+        'sorted_points': sorted_points.copy(),
+        'description': f'Graham\'s Scan complete - hull has {len(convex_hull)} vertices'
     })
     
-    return hull
+    return convex_hull
 
 def jarvis_march(points: List[Tuple[float, float]]) -> List[Tuple[float, float]]:
-    """Jarvis March (Gift Wrapping) algorithm"""
+    """
+    Jarvis March (Gift Wrapping) Convex Hull Algorithm
+    Time Complexity: O(nh)
+    - n = number of input points
+    - h = number of hull vertices
+    - Worst case: O(n^2) when h = n
+    - Best case: O(n) when h is constant
+    """
     global jarvis_steps
     jarvis_steps = []
     
-    if len(points) < 3:
+    n = len(points)
+    if n < 3:
         return points
     
-    # Find the leftmost point
-    leftmost = min(points, key=lambda p: (p[0], p[1]))
-    hull = []
-    current = leftmost
+    # Find the leftmost point (smallest x-coordinate)
+    # This point is guaranteed to be on the convex hull
+    leftmost_idx = 0
+    for i in range(1, n):
+        if points[i][0] < points[leftmost_idx][0]:
+            leftmost_idx = i
+        elif points[i][0] == points[leftmost_idx][0]:
+            if points[i][1] < points[leftmost_idx][1]:
+                leftmost_idx = i
     
+    # Start from leftmost point
+    hull = []
+    p = leftmost_idx
+    iteration = 1
+    
+    # Keep walking around the hull until we return to start
     while True:
-        hull.append(current)
+        # Add current point to hull
+        hull.append(points[p])
+        
         jarvis_steps.append({
             'type': 'jarvis_step',
-            'current_point': current,
+            'current_point': points[p],
+            'current_index': p,
             'hull_so_far': hull.copy(),
-            'description': f'Starting from point {current}'
+            'all_points': points.copy(),
+            'iteration': iteration,
+            'description': f'Step {iteration}: Added point ({points[p][0]:.1f}, {points[p][1]:.1f}) to hull'
         })
         
-        next_point = points[0]
-        for candidate in points:
-            if candidate == current:
+        # Find the most counter-clockwise point from points[p]
+        # This will be the next point on the hull
+        q = (p + 1) % n  # Start with the next point in array
+        
+        for i in range(n):
+            if i == p:  # Skip current point
                 continue
                 
+            # Find the point that makes the largest left turn
+            # (most counter-clockwise) from current point p
+            orient = orientation(points[p], points[i], points[q])
+            
+            # Record testing step
             jarvis_steps.append({
                 'type': 'testing',
-                'current_point': current,
-                'candidate': candidate,
-                'next_point': next_point,
+                'current_point': points[p],
+                'current_index': p,
                 'hull_so_far': hull.copy(),
-                'description': f'Testing candidate {candidate}'
+                'candidate': points[q],
+                'candidate_index': q,
+                'testing_point': points[i],
+                'testing_index': i,
+                'orientation': 'counter_clockwise' if orient > 0 else 'clockwise' if orient < 0 else 'collinear',
+                'cross_product': orient,
+                'iteration': iteration,
+                'is_better': False,  # Will be updated below
+                'description': f'Testing point ({points[i][0]:.1f}, {points[i][1]:.1f}) vs current candidate ({points[q][0]:.1f}, {points[q][1]:.1f})'
             })
             
-            cross = cross_product(current, next_point, candidate)
-            if next_point == current or cross > 0 or (cross == 0 and distance_squared(current, candidate) > distance_squared(current, next_point)):
-                next_point = candidate
+            if orient > 0:
+                # Point i is more counter-clockwise than q
+                q = i
+                jarvis_steps[-1]['is_better'] = True
+                jarvis_steps[-1]['description'] += f' - Better (more counter-clockwise)'
+                
+                jarvis_steps.append({
+                    'type': 'candidate_selected',
+                    'current_point': points[p],
+                    'selected_candidate': points[i],
+                    'hull_so_far': hull.copy(),
+                    'iteration': iteration,
+                    'description': f'Selected ({points[i][0]:.1f}, {points[i][1]:.1f}) as new best candidate'
+                })
+            elif orient == 0 and distance_squared(points[p], points[i]) > distance_squared(points[p], points[q]):
+                # Points are collinear, choose the farthest one
+                q = i
+                jarvis_steps[-1]['is_better'] = True
+                jarvis_steps[-1]['description'] += f' - Better (collinear but farther)'
+                
+                jarvis_steps.append({
+                    'type': 'candidate_selected',
+                    'current_point': points[p],
+                    'selected_candidate': points[i],
+                    'hull_so_far': hull.copy(),
+                    'iteration': iteration,
+                    'description': f'Selected ({points[i][0]:.1f}, {points[i][1]:.1f}) - collinear but farther'
+                })
+            else:
+                jarvis_steps[-1]['description'] += f' - Worse (not counter-clockwise enough)'
         
-        current = next_point
-        if current == leftmost:  # Completed the hull
+        # Move to next hull point
+        p = q
+        iteration += 1
+        
+        # If we've returned to the start, we're done
+        if p == leftmost_idx:
+            jarvis_steps.append({
+                'type': 'complete',
+                'final_hull': hull.copy(),
+                'all_points': points.copy(),
+                'description': f'Returned to starting point - hull complete with {len(hull)} vertices!'
+            })
             break
-    
-    jarvis_steps.append({
-        'type': 'complete',
-        'final_hull': hull,
-        'description': f'Jarvis March complete - hull has {len(hull)} vertices'
-    })
+        
+        # Safety check to prevent infinite loops
+        if len(hull) > n:
+            break
     
     return hull
 
@@ -182,9 +425,11 @@ def chans_algorithm(points: List[Tuple[float, float]]) -> List[Tuple[float, floa
                 'type': 'mini_hull',
                 'group_idx': i,
                 'num_groups': len(groups),
+                'group_points': group,  # Add the original group points
                 'mini_hull': mini_hull,
                 'all_mini_hulls': mini_hulls.copy(),
-                'description': f'Computed mini-hull {i+1}/{len(groups)} with {len(mini_hull)} points'
+                'all_groups': [groups[j] for j in range(i+1)],  # All groups processed so far
+                'description': f'Computed mini-hull {i+1}/{len(groups)} with {len(mini_hull)} points from {len(group)} input points'
             })
         
         # Use Jarvis march to find the overall hull
@@ -199,20 +444,35 @@ def chans_algorithm(points: List[Tuple[float, float]]) -> List[Tuple[float, floa
                 'type': 'jarvis_phase',
                 'current_point': current,
                 'hull_so_far': hull.copy(),
+                'mini_hulls': mini_hulls.copy(),  # Keep mini-hulls visible
                 'step': step,
                 'max_steps': m,
-                'description': f'Jarvis phase step {step+1}/{m}'
+                'description': f'Jarvis phase step {step+1}/{m} - connecting mini-hulls'
             })
             
             next_point = None
+            best_mini_hull_idx = None
             
             # Find the most counter-clockwise point from all mini-hulls
-            for mini_hull in mini_hulls:
+            for hull_idx, mini_hull in enumerate(mini_hulls):
                 for candidate in mini_hull:
                     if candidate == current:
                         continue
-                    if next_point is None or cross_product(current, next_point, candidate) > 0:
+                    if next_point is None or orientation(current, next_point, candidate) > 0:
                         next_point = candidate
+                        best_mini_hull_idx = hull_idx
+            
+            # Record the connecting edge being considered
+            if next_point and current != next_point:
+                chan_steps.append({
+                    'type': 'connecting_edge',
+                    'current_point': current,
+                    'next_point': next_point,
+                    'hull_so_far': hull.copy(),
+                    'mini_hulls': mini_hulls.copy(),
+                    'connecting_hull_idx': best_mini_hull_idx,
+                    'description': f'Connecting to point {next_point} from mini-hull {best_mini_hull_idx + 1}'
+                })
             
             if next_point == leftmost:  # Completed the hull
                 chan_steps.append({
@@ -234,97 +494,223 @@ def chans_algorithm(points: List[Tuple[float, float]]) -> List[Tuple[float, floa
     # Fallback to Graham's scan if Chan's fails
     return grahams_scan(points)
 
+def point_in_convex_ccw(hull: List[Tuple[float, float]], p: Tuple[float, float]) -> bool:
+    """Check if point p is inside or on the boundary of a convex CCW polygon."""
+    n = len(hull)
+    if n == 0:
+        return False
+    if n == 1:
+        return abs(p[0] - hull[0][0]) < 1e-12 and abs(p[1] - hull[0][1]) < 1e-12
+    if n == 2:
+        # Check if point is on line segment
+        a, b = hull
+        if abs(orientation(a, b, p)) > 1e-12:
+            return False
+        # Check if point is between a and b
+        ap = (p[0] - a[0], p[1] - a[1])
+        ab = (b[0] - a[0], b[1] - a[1])
+        t = (ap[0] * ab[0] + ap[1] * ab[1]) / (ab[0] * ab[0] + ab[1] * ab[1])
+        return 0 <= t <= 1
+    
+    # For polygon with 3+ vertices
+    for i in range(n):
+        a = hull[i]
+        b = hull[(i + 1) % n]
+        if orientation(a, b, p) < -1e-12:  # Point is to the right of edge (outside)
+            return False
+    return True
+
+def right_tangent_index(hull: List[Tuple[float, float]], p: Tuple[float, float]) -> int:
+    """Find the right tangent from point p to convex CCW hull using binary search."""
+    n = len(hull)
+    if n <= 2:
+        return 0
+    
+    # Binary search for right tangent
+    lo, hi = 0, n - 1
+    max_iters = int(2 * (math.log2(n) + 3))
+    
+    for _ in range(max_iters):
+        mid = (lo + hi) // 2
+        m = hull[mid]
+        mn = hull[(mid + 1) % n]
+        mp = hull[(mid - 1 + n) % n]
+        
+        side_next = orientation(p, m, mn)
+        side_prev = orientation(p, mp, m)
+        
+        if side_next <= 0 and side_prev > 0:
+            return mid
+        
+        if side_next > 0:
+            hi = (mid - 1 + n) % n
+        else:
+            lo = (mid + 1) % n
+        
+        if (hi + n - lo) % n <= 2:
+            break
+    
+    # Brute force for small remaining range
+    for k in range(n):
+        i = (lo + k) % n
+        m = hull[i]
+        mn = hull[(i + 1) % n]
+        mp = hull[(i - 1 + n) % n]
+        if orientation(p, m, mn) <= 0 and orientation(p, mp, m) > 0:
+            return i
+    
+    return 0
+
+def left_tangent_index(hull: List[Tuple[float, float]], p: Tuple[float, float]) -> int:
+    """Find the left tangent from point p to convex CCW hull using binary search."""
+    n = len(hull)
+    if n <= 2:
+        return 0 if n == 1 else (0 if orientation(p, hull[0], hull[1]) > 0 else 1)
+    
+    # Binary search for left tangent
+    lo, hi = 0, n - 1
+    max_iters = int(2 * (math.log2(n) + 3))
+    
+    for _ in range(max_iters):
+        mid = (lo + hi) // 2
+        m = hull[mid]
+        mn = hull[(mid + 1) % n]
+        mp = hull[(mid - 1 + n) % n]
+        
+        side_next = orientation(p, m, mn)
+        side_prev = orientation(p, mp, m)
+        
+        if side_next > 0 and side_prev <= 0:
+            return mid
+        
+        if side_next <= 0:
+            hi = (mid - 1 + n) % n
+        else:
+            lo = (mid + 1) % n
+        
+        if (hi + n - lo) % n <= 2:
+            break
+    
+    # Brute force for small remaining range
+    for k in range(n):
+        i = (lo + k) % n
+        m = hull[i]
+        mn = hull[(i + 1) % n]
+        mp = hull[(i - 1 + n) % n]
+        if orientation(p, m, mn) > 0 and orientation(p, mp, m) <= 0:
+            return i
+    
+    return 0
+
+def build_ccw_hull(points: List[Tuple[float, float]]) -> List[Tuple[float, float]]:
+    """Build a CCW convex hull using Andrew's monotone chain algorithm."""
+    if len(points) <= 1:
+        return points[:]
+    
+    pts = sorted(set(points))
+    if len(pts) <= 1:
+        return pts[:]
+    
+    def strip_collinear(stack, p):
+        while len(stack) >= 2 and orientation(stack[-2], stack[-1], p) <= 0:
+            stack.pop()
+        stack.append(p)
+    
+    lower, upper = [], []
+    for p in pts:
+        strip_collinear(lower, p)
+    for p in reversed(pts):
+        strip_collinear(upper, p)
+    
+    return lower[:-1] + upper[:-1]
+
 def incremental_convex_hull(points: List[Tuple[float, float]]) -> List[Tuple[float, float]]:
-    """Incremental convex hull algorithm - simplified to use Graham's scan approach"""
+    """Incremental convex hull with O(log h) binary-search tangents."""
     global incremental_steps
     incremental_steps = []
     
     if len(points) < 3:
         return points
     
-    # For simplicity and correctness, we'll build the hull incrementally
-    # by maintaining a sorted order and using a similar approach to Graham's scan
+    hull = []
     
-    # Sort points by x-coordinate
-    sorted_points = sorted(points, key=lambda p: (p[0], p[1]))
-    
-    # Start with first point
-    hull = [sorted_points[0]]
-    
-    incremental_steps.append({
-        'type': 'seed',
-        'initial_hull': hull.copy(),
-        'description': f'Starting with leftmost point: {hull[0]}'
-    })
-    
-    # Add points one by one
-    for i, point in enumerate(sorted_points[1:], 1):
-        # Check if we need to add this point
-        if len(hull) < 2:
-            hull.append(point)
+    for idx, p in enumerate(points):
+        if len(hull) < 3:
+            # Build initial hull with first few points
+            before = hull.copy()
+            hull = build_ccw_hull(hull + [p])
+            
             incremental_steps.append({
-                'type': 'added',
-                'point': point,
+                'type': 'seed',
+                'added_point': p,
+                'hull_before': before,
                 'hull_after': hull.copy(),
-                'description': f'Added point {point} - hull now has {len(hull)} points'
+                'description': f'Added point {p} to initial hull - now has {len(hull)} points'
             })
             continue
         
-        # For incremental construction, we'll use a simplified approach
-        # Add the point and then clean up the hull
-        hull.append(point)
+        # Check if point is inside current hull
+        if point_in_convex_ccw(hull, p):
+            incremental_steps.append({
+                'type': 'inside',
+                'point': p,
+                'hull_before': hull.copy(),
+                'description': f'Point {p} is inside current hull - no change needed'
+            })
+            continue
         
-        # Remove points that create inward turns (similar to Graham's scan)
-        while len(hull) >= 3:
-            # Check the last three points
-            if cross_product(hull[-3], hull[-2], hull[-1]) <= 0:
-                # Remove the middle point as it creates an inward turn
-                removed = hull.pop(-2)
-                incremental_steps.append({
-                    'type': 'removed',
-                    'point': point,
-                    'removed_point': removed,
-                    'hull_after': hull.copy(),
-                    'description': f'Removed {removed} - created inward turn'
-                })
-            else:
-                break
+        # Point is outside - find tangents using binary search
+        hull_before = hull.copy()
+        rt_idx = right_tangent_index(hull, p)
+        lt_idx = left_tangent_index(hull, p)
         
         incremental_steps.append({
-            'type': 'added',
-            'point': point,
-            'hull_after': hull.copy(),
-            'description': f'Added point {point} - hull now has {len(hull)} points'
+            'type': 'tangents',
+            'point': p,
+            'hull_before': hull_before.copy(),
+            'right_tangent_vertex': hull[rt_idx],
+            'left_tangent_vertex': hull[lt_idx],
+            'right_tangent_idx': rt_idx,
+            'left_tangent_idx': lt_idx,
+            'description': f'Found tangent lines from {p} using O(log h) binary search'
         })
-    
-    # Now we have the lower hull, we need to build the upper hull
-    # Start from the rightmost point and go back
-    upper_hull = []
-    for point in reversed(sorted_points):
-        while len(upper_hull) >= 2 and cross_product(upper_hull[-2], upper_hull[-1], point) <= 0:
-            upper_hull.pop()
-        upper_hull.append(point)
-    
-    # Combine lower and upper hulls, removing duplicate endpoints
-    if len(hull) > 1 and len(upper_hull) > 1:
-        # Remove the last point of lower hull and first point of upper hull (they're the same)
-        full_hull = hull[:-1] + upper_hull[:-1]
-    else:
-        full_hull = hull + upper_hull
-    
-    # Remove duplicates while preserving order
-    final_hull = []
-    for point in full_hull:
-        if point not in final_hull:
-            final_hull.append(point)
+        
+        # Splice point into hull
+        n = len(hull)
+        if rt_idx <= lt_idx:
+            # Keep vertices from lt to rt (inclusive), replace the rest with p
+            new_hull = [hull[rt_idx], p] + [hull[i] for i in range(lt_idx, n)] + [hull[i] for i in range(0, rt_idx)]
+        else:
+            # Wrap-around case
+            keep_indices = list(range(lt_idx, rt_idx + 1))
+            new_hull = [hull[rt_idx], p] + [hull[i] for i in keep_indices]
+        
+        # Remove duplicates and ensure proper CCW order
+        cleaned = []
+        for q in new_hull:
+            if not cleaned or cleaned[-1] != q:
+                cleaned.append(q)
+        
+        if len(cleaned) >= 2 and cleaned[0] == cleaned[-1]:
+            cleaned.pop()
+        
+        hull = cleaned
+        
+        incremental_steps.append({
+            'type': 'splice_done',
+            'point': p,
+            'hull_before': hull_before,
+            'hull_after': hull.copy(),
+            'description': f'Spliced {p} into hull using tangents - now has {len(hull)} vertices'
+        })
     
     incremental_steps.append({
         'type': 'complete',
-        'final_hull': final_hull,
-        'description': f'Incremental hull complete - {len(final_hull)} vertices'
+        'final_hull': hull,
+        'description': f'Incremental hull complete with O(log h) tangent search - {len(hull)} vertices'
     })
     
-    return final_hull
+    return hull
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for GitHub Pages
