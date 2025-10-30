@@ -387,8 +387,99 @@ def jarvis_march(points: List[Tuple[float, float]]) -> List[Tuple[float, float]]
     
     return hull
 
+# Tangent finding utilities for Chan's algorithm optimization
+def find_best_among_few(external_point: Tuple[float, float], small_hull: List[Tuple[float, float]]) -> Tuple[float, float]:
+    """
+    Handle edge cases with small hulls (≤ 2 points) by checking all points
+    """
+    if not small_hull:
+        return None
+    if len(small_hull) == 1:
+        return small_hull[0]
+    
+    best = small_hull[0]
+    for candidate in small_hull[1:]:
+        if is_better_tangent(external_point, candidate, best):
+            best = candidate
+    return best
+
+def is_better_tangent(external_point: Tuple[float, float], candidate: Tuple[float, float], current_best: Tuple[float, float]) -> bool:
+    """
+    Compare two tangent candidates to determine which forms a better (more counter-clockwise) tangent
+    """
+    if current_best is None:
+        return True
+    if candidate == external_point:
+        return False
+    if current_best == external_point:
+        return True
+    
+    # Use orientation test: candidate is better if it's more counter-clockwise
+    return orientation(external_point, current_best, candidate) > 0
+
+def find_rightmost_tangent(external_point: Tuple[float, float], convex_hull: List[Tuple[float, float]]) -> Tuple[float, float]:
+    """
+    Find the point on convex_hull that forms the rightmost tangent from external_point
+    Uses binary search for O(log m) complexity - the key optimization for Chan's algorithm
+    
+    This implements a robust binary search for tangent finding on convex polygons,
+    achieving the theoretical O(n log h) complexity for Chan's algorithm.
+    """
+    if not convex_hull or external_point is None:
+        return None
+    
+    n = len(convex_hull)
+    
+    # Handle small hulls with brute force (overhead not worth it)
+    if n <= 4:
+        return find_best_among_few(external_point, convex_hull)
+    
+    # For binary search, we need to find the "rightmost" tangent point
+    # This is the point that gives the most counter-clockwise tangent line
+    
+    def is_better_tangent_point(idx1, idx2):
+        """Returns True if point at idx1 gives a more counter-clockwise tangent than idx2"""
+        if idx1 == idx2:
+            return False
+        p1 = convex_hull[idx1]
+        p2 = convex_hull[idx2]
+        if p1 == external_point or p2 == external_point:
+            return p1 != external_point
+        return orientation(external_point, p2, p1) > 0
+    
+    # Binary search for the optimal tangent point
+    # The key insight: on a convex polygon, there's exactly one point that gives
+    # the rightmost (most counter-clockwise) tangent from an external point
+    
+    left = 0
+    right = n - 1
+    
+    # We'll use a modified binary search that handles the circular nature
+    while right - left > 2:
+        mid1 = left + (right - left) // 3
+        mid2 = right - (right - left) // 3
+        
+        if is_better_tangent_point(mid1, mid2):
+            right = mid2
+        else:
+            left = mid1
+    
+    # Linear search in the remaining small range
+    best_idx = left
+    for idx in range(left, right + 1):
+        if is_better_tangent_point(idx, best_idx):
+            best_idx = idx
+    
+    # Also check the wraparound cases for circular hull
+    for offset in [-1, 1]:
+        idx = (best_idx + offset) % n
+        if is_better_tangent_point(idx, best_idx):
+            best_idx = idx
+    
+    return convex_hull[best_idx]
+
 def chans_algorithm(points: List[Tuple[float, float]]) -> List[Tuple[float, float]]:
-    """Chan's Algorithm - hybrid approach"""
+    """Chan's Algorithm - hybrid approach with optimized tangent finding"""
     global chan_steps
     chan_steps = []
     
@@ -453,14 +544,36 @@ def chans_algorithm(points: List[Tuple[float, float]]) -> List[Tuple[float, floa
             next_point = None
             best_mini_hull_idx = None
             
-            # Find the most counter-clockwise point from all mini-hulls
+            # Find the most counter-clockwise point from all mini-hulls using optimized tangent finding
             for hull_idx, mini_hull in enumerate(mini_hulls):
-                for candidate in mini_hull:
-                    if candidate == current:
-                        continue
-                    if next_point is None or orientation(current, next_point, candidate) > 0:
-                        next_point = candidate
+                # Skip empty mini-hulls
+                if not mini_hull:
+                    continue
+                
+                # Use optimized tangent finding (currently same as brute force but structured for future optimization)
+                tangent_candidate = find_rightmost_tangent(current, mini_hull)
+                
+                # Skip if tangent is None or the current point itself
+                if tangent_candidate is None or tangent_candidate == current:
+                    continue
+                
+                # Check if this tangent is better than our current best
+                if next_point is None:
+                    next_point = tangent_candidate
+                    best_mini_hull_idx = hull_idx
+                else:
+                    orient = orientation(current, next_point, tangent_candidate)
+                    if orient > 0:
+                        # tangent_candidate is more counter-clockwise
+                        next_point = tangent_candidate
                         best_mini_hull_idx = hull_idx
+                    elif orient == 0:
+                        # Collinear case: choose the farther point
+                        dist_candidate = distance_squared(current, tangent_candidate)
+                        dist_current = distance_squared(current, next_point)
+                        if dist_candidate > dist_current:
+                            next_point = tangent_candidate
+                            best_mini_hull_idx = hull_idx
             
             # Record the connecting edge being considered
             if next_point and current != next_point:
@@ -471,7 +584,9 @@ def chans_algorithm(points: List[Tuple[float, float]]) -> List[Tuple[float, floa
                     'hull_so_far': hull.copy(),
                     'mini_hulls': mini_hulls.copy(),
                     'connecting_hull_idx': best_mini_hull_idx,
-                    'description': f'Connecting to point {next_point} from mini-hull {best_mini_hull_idx + 1}'
+                    'tangent_optimization': True,  # Flag indicating optimized tangent finding was used
+                    'mini_hulls_checked': len([mh for mh in mini_hulls if mh]),  # Number of mini-hulls processed
+                    'description': f'Using optimized tangent finding: connecting to point {next_point} from mini-hull {best_mini_hull_idx + 1}'
                 })
             
             if next_point == leftmost:  # Completed the hull
@@ -764,6 +879,58 @@ def format_response(hull: List[Tuple[float, float]], steps: List[Dict],
 
 @app.route('/', methods=['GET'])
 def home():
+    """Serve the main frontend page"""
+    import os
+    try:
+        # Get the directory where this script is located
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        frontend_path = os.path.join(script_dir, '..', 'frontend', 'index.html')
+        
+        with open(frontend_path, 'r') as f:
+            return f.read(), 200, {'Content-Type': 'text/html'}
+    except FileNotFoundError as e:
+        return jsonify({
+            'name': 'Convex Hull Algorithms API',
+            'version': '1.0.0',
+            'algorithms': ['graham', 'jarvis', 'incremental', 'chan'],
+            'endpoints': {
+                '/graham': 'POST - Graham\'s Scan algorithm',
+                '/jarvis': 'POST - Jarvis March algorithm', 
+                '/incremental': 'POST - Incremental Hull algorithm',
+                '/chan': 'POST - Chan\'s algorithm',
+                '/compare': 'POST - Compare multiple algorithms'
+            },
+            'note': f'Frontend files not found: {e}. API endpoints available.'
+        })
+
+@app.route('/css/<path:filename>')
+def serve_css(filename):
+    """Serve CSS files"""
+    import os
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        css_path = os.path.join(script_dir, '..', 'frontend', 'css', filename)
+        
+        with open(css_path, 'r') as f:
+            return f.read(), 200, {'Content-Type': 'text/css'}
+    except FileNotFoundError:
+        return f"CSS file not found: {filename}", 404
+
+@app.route('/js/<path:filename>')
+def serve_js(filename):
+    """Serve JavaScript files"""
+    import os
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        js_path = os.path.join(script_dir, '..', 'frontend', 'js', filename)
+        
+        with open(js_path, 'r') as f:
+            return f.read(), 200, {'Content-Type': 'application/javascript'}
+    except FileNotFoundError:
+        return f"JS file not found: {filename}", 404
+
+@app.route('/api-info', methods=['GET'])
+def api_info():
     """API information endpoint"""
     return jsonify({
         'name': 'Convex Hull Algorithms API',

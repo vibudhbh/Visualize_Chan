@@ -23,9 +23,8 @@ class ModernConvexHullApp {
         this.setupEventListeners();
         this.setupVisualizationEvents();
         
-        // Set Graham's Scan as default selection
-        console.log('Initializing with Graham\'s Scan as default');
-        this.selectAlgorithm('graham');
+        // No default algorithm selection - let users choose after generating points
+        console.log('Initializing - users will select algorithm after generating points');
         
         this.updateUI();
         this.testAPIConnection();
@@ -38,7 +37,7 @@ class ModernConvexHullApp {
         // Algorithm selection
         document.querySelectorAll('input[name="algorithm"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
-                this.selectAlgorithm(e.target.value);
+                this.selectAlgorithm(e.target.value, true);
             });
         });
 
@@ -51,7 +50,7 @@ class ModernConvexHullApp {
                 // If this algorithm is already selected, don't do anything
                 // Just ensure the radio is checked and select it
                 radio.checked = true;
-                this.selectAlgorithm(algorithm);
+                this.selectAlgorithm(algorithm, true);
             });
         });
 
@@ -150,8 +149,8 @@ class ModernConvexHullApp {
         });
     }
 
-    selectAlgorithm(algorithm) {
-        console.log('Selecting algorithm:', algorithm);
+    selectAlgorithm(algorithm, isUserAction = false) {
+        console.log('Selecting algorithm:', algorithm, 'User action:', isUserAction);
         this.currentAlgorithm = algorithm;
         
         if (algorithm) {
@@ -166,8 +165,8 @@ class ModernConvexHullApp {
                 card.classList.toggle('active', card.dataset.algorithm === algorithm);
             });
             
-            // Complete step 2 and move to step 3
-            if (typeof completeStep !== 'undefined') {
+            // Only complete step 2 if this is a user action, not initialization
+            if (isUserAction && typeof completeStep !== 'undefined') {
                 completeStep(2);
             }
         } else {
@@ -304,8 +303,8 @@ class ModernConvexHullApp {
         this.clearResults();
         this.updatePointCount();
         
-        // Reset algorithm selection to default
-        this.selectAlgorithm('graham');
+        // Clear algorithm selection - let users choose
+        this.selectAlgorithm(null);
         
         // Reset workflow to Step 1
         if (typeof resetWorkflow !== 'undefined') {
@@ -381,10 +380,7 @@ class ModernConvexHullApp {
         this.updatePointCount();
         // Don't call fitToData here - let the default scales handle it
         
-        // Complete step 1 since we have initial points
-        if (typeof completeStep !== 'undefined') {
-            setTimeout(() => completeStep(1), 1000);
-        }
+        // Don't auto-complete steps - let user choose algorithm first
     }
 
     onPointAdded(point) {
@@ -537,30 +533,38 @@ class ModernConvexHullApp {
             incremental: "Incremental Hull"
         };
 
-        // Update Step 1 description
+        // Update Step 1 description (Point Generation)
         const pointCount = this.visualizer.getPoints().length;
         const step1Desc = document.getElementById('step-1-description');
         if (step1Desc) {
-            step1Desc.textContent = `${pointCount} points generated`;
+            if (pointCount === 0) {
+                step1Desc.textContent = 'Create your dataset to explore';
+            } else {
+                step1Desc.textContent = `${pointCount} points generated`;
+            }
         }
 
-        // Update Step 2 description
+        // Update Step 2 description (Algorithm Selection)
         const step2Desc = document.getElementById('step-2-description');
         if (step2Desc) {
             if (this.currentAlgorithm) {
                 step2Desc.textContent = `${algorithmNames[this.currentAlgorithm]} selected`;
             } else {
-                step2Desc.textContent = 'Select convex hull algorithm to visualize';
+                step2Desc.textContent = 'Select your convex hull algorithm';
             }
         }
 
-        // Update Step 3 description
+        // Update Step 3 description (Run Visualization)
         const step3Desc = document.getElementById('step-3-description');
         if (step3Desc) {
-            if (this.currentAlgorithm) {
-                step3Desc.textContent = `Ready to run ${algorithmNames[this.currentAlgorithm]}`;
+            if (this.currentAlgorithm && pointCount >= 3) {
+                step3Desc.textContent = `Ready to run ${algorithmNames[this.currentAlgorithm]} or compare all algorithms`;
+            } else if (pointCount < 3) {
+                step3Desc.textContent = 'Need at least 3 points to visualize';
+            } else if (!this.currentAlgorithm) {
+                step3Desc.textContent = 'Select algorithm first';
             } else {
-                step3Desc.textContent = 'Execute algorithm or compare all';
+                step3Desc.textContent = 'Execute and watch the algorithm';
             }
         }
     }
@@ -903,16 +907,7 @@ class ModernConvexHullApp {
         document.getElementById('compare-btn').disabled = loading;
     }
 
-    showStatus(message, type = 'info') {
-        document.getElementById('status-message').textContent = message;
-        document.getElementById('execution-status').textContent = message;
-        
-        // Update status styling based on type
-        const statusElement = document.getElementById('execution-status');
-        statusElement.className = `status-detail ${type}`;
-        
-        console.log(`[${type.toUpperCase()}] ${message}`);
-    }
+
 
     async testAPIConnection() {
         const statusElement = document.getElementById('api-status');
@@ -957,4 +952,480 @@ class ModernConvexHullApp {
 // Initialize the application when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.modernConvexHullApp = new ModernConvexHullApp();
+});
+
+// Algorithm Information Modal Functions
+function showAlgorithmInfo(algorithm, event) {
+    // Prevent the label click from selecting the radio button
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const modal = document.getElementById('algorithm-info-modal');
+    const title = document.getElementById('modal-title');
+    const body = document.getElementById('modal-body');
+    
+    const algorithmData = getAlgorithmInfo(algorithm);
+    
+    title.textContent = algorithmData.title;
+    body.innerHTML = algorithmData.content;
+    
+    modal.style.display = 'block';
+    
+    // Close modal when clicking outside
+    modal.onclick = function(event) {
+        if (event.target === modal) {
+            closeAlgorithmModal();
+        }
+    };
+}
+
+function closeAlgorithmModal() {
+    const modal = document.getElementById('algorithm-info-modal');
+    modal.style.display = 'none';
+}
+
+function getAlgorithmInfo(algorithm) {
+    const algorithmInfo = {
+        graham: {
+            title: "Graham's Scan Algorithm",
+            content: `
+                <div class="algorithm-overview">
+                    <h3>Algorithm Overview</h3>
+                    <p>Graham's Scan constructs the convex hull by sorting points and using a stack-based approach to build upper and lower hull segments separately. Our implementation builds the upper hull first (left to right), then the lower hull (right to left), using orientation tests to maintain convexity.</p>
+                </div>
+
+                <div class="complexity-info">
+                    <h4>Time Complexity Analysis</h4>
+                    <div class="complexity-grid">
+                        <div class="complexity-item">
+                            <strong>Best Case:</strong> O(n log n)
+                        </div>
+                        <div class="complexity-item">
+                            <strong>Average Case:</strong> O(n log n)
+                        </div>
+                        <div class="complexity-item">
+                            <strong>Worst Case:</strong> O(n log n)
+                        </div>
+                        <div class="complexity-item">
+                            <strong>Space:</strong> O(n)
+                        </div>
+                    </div>
+                    <p>Complexity dominated by sorting. Hull construction is O(n) with each point added/removed at most once.</p>
+                </div>
+
+                <div class="algorithm-steps">
+                    <h3>Implementation Steps</h3>
+                    
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h4>Sort Points by X-Coordinate</h4>
+                            <p>Sort all points by x-coordinate (then y-coordinate for ties). This creates the left-to-right ordering needed for the two-pass hull construction.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h4>Build Upper Hull</h4>
+                            <p>Process points from left to right, maintaining a stack. Use the left turn test: for three consecutive points A→B→C, keep only left turns (positive orientation). Pop points that create right turns or are collinear.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h4>Build Lower Hull</h4>
+                            <p>Process points from right to left, applying the same left turn test. This constructs the lower portion of the convex hull using the same orientation-based elimination.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <h4>Combine Hull Segments</h4>
+                            <p>Concatenate upper and lower hulls, removing duplicate endpoints to form the complete convex hull in counter-clockwise order.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="algorithm-overview" style="background: var(--bg-tertiary); padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h4>Left Turn Test Explained</h4>
+                    <p>The core of Graham's Scan is the <strong>left turn test</strong> using orientation:</p>
+                    <ul style="margin: 12px 0; padding-left: 20px;">
+                        <li><strong>Positive orientation</strong>: Points form a left turn (counter-clockwise) → Keep the point</li>
+                        <li><strong>Zero orientation</strong>: Points are collinear → Remove middle point</li>
+                        <li><strong>Negative orientation</strong>: Points form a right turn (clockwise) → Remove middle point</li>
+                    </ul>
+                    <p>This ensures we maintain a convex hull by eliminating any "inward bends" that would violate convexity.</p>
+                </div>
+
+
+
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h4>Advantages</h4>
+                        <ul>
+                            <li>Optimal O(n log n) time complexity</li>
+                            <li>Predictable performance regardless of input</li>
+                            <li>Robust handling of edge cases and collinear points</li>
+                            <li>Well-suited for general-purpose use</li>
+                            <li>Clear geometric interpretation with left turn test</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h4>Disadvantages</h4>
+                        <ul>
+                            <li>Not output-sensitive (doesn't benefit from small hulls)</li>
+                            <li>Sorting overhead for small datasets</li>
+                            <li>More complex than Jarvis March conceptually</li>
+                            <li>Requires careful orientation predicate implementation</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="algorithm-overview">
+                    <h3>Usage Recommendations</h3>
+                    <p><strong>Best for:</strong> General-purpose convex hull computation when you need predictable O(n log n) performance. Recommended as the default choice for most applications.</p>
+                    <p><strong>Consider alternatives when:</strong> Working with very small datasets where simpler algorithms might have lower overhead, or when hull size is guaranteed to be very small.</p>
+                </div>
+            `
+        },
+        
+        jarvis: {
+            title: "Jarvis March Algorithm",
+            content: `
+                <div class="algorithm-overview">
+                    <h3>Algorithm Overview</h3>
+                    <p>Jarvis March constructs the convex hull by iteratively finding the next hull vertex using orientation tests. Starting from the leftmost point, it "wraps" around the point set by always selecting the most counter-clockwise point as the next hull vertex.</p>
+                </div>
+
+                <div class="complexity-info">
+                    <h4>Time Complexity Analysis</h4>
+                    <div class="complexity-grid">
+                        <div class="complexity-item">
+                            <strong>Best Case:</strong> O(n) when h = 3
+                        </div>
+                        <div class="complexity-item">
+                            <strong>Average Case:</strong> O(n × h)
+                        </div>
+                        <div class="complexity-item">
+                            <strong>Worst Case:</strong> O(n²) when h = n
+                        </div>
+                        <div class="complexity-item">
+                            <strong>Space:</strong> O(h)
+                        </div>
+                    </div>
+                    <p>This is an output-sensitive algorithm - performance depends on hull size (h). Often faster than Graham's Scan for small hulls.</p>
+                </div>
+
+                <div class="algorithm-steps">
+                    <h3>Implementation Steps</h3>
+                    
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h4>Find Leftmost Point</h4>
+                            <p>Identify the point with the smallest x-coordinate (leftmost y-coordinate for ties). This point is guaranteed to be on the convex hull.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h4>Initialize Hull Construction</h4>
+                            <p>Start with the leftmost point as the first hull vertex and set it as the current point for the wrapping process.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h4>Find Next Hull Vertex</h4>
+                            <p>For each candidate point, use orientation tests to determine if it forms a more counter-clockwise angle than the current best. Select the most counter-clockwise point.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <h4>Continue Hull Wrapping</h4>
+                            <p>Add the selected point to the hull and make it the new current point. Repeat the selection process from this new position.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">5</div>
+                        <div class="step-content">
+                            <h4>Complete Hull</h4>
+                            <p>Continue until returning to the starting point, completing the convex hull. The algorithm naturally terminates when the hull is closed.</p>
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h4>Advantages</h4>
+                        <ul>
+                            <li>Output-sensitive: excellent for small hulls</li>
+                            <li>Simple conceptual model and implementation</li>
+                            <li>Excellent cache locality with linear scans</li>
+                            <li>Low memory overhead</li>
+                            <li>Often fastest for practical datasets</li>
+                            <li>Intuitive geometric interpretation</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h4>Disadvantages</h4>
+                        <ul>
+                            <li>Performance degrades with hull size</li>
+                            <li>Can reach O(n²) for large hulls</li>
+                            <li>No worst-case guarantees</li>
+                            <li>Less predictable than Graham's Scan</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="algorithm-overview">
+                    <h3>Usage Recommendations</h3>
+                    <p><strong>Best for:</strong> Small to medium datasets, especially when the convex hull is expected to have few vertices. Excellent choice for real-time applications with typical point distributions.</p>
+                    <p><strong>Consider alternatives when:</strong> Working with large datasets where hull size is unpredictable, or when you need guaranteed O(n log n) performance bounds.</p>
+                </div>
+            `
+        },
+        
+        chan: {
+            title: "Chan's Algorithm",
+            content: `
+                <div class="algorithm-overview">
+                    <h3>Algorithm Overview</h3>
+                    <p>Chan's Algorithm is a hybrid approach that combines Graham's Scan and Jarvis March using iterative doubling. Our implementation includes optimized tangent finding with binary search to achieve theoretical O(n log h) complexity, making it optimal for large datasets with small hulls.</p>
+                </div>
+
+                <div class="complexity-info">
+                    <h4>Time Complexity Analysis</h4>
+                    <div class="complexity-grid">
+                        <div class="complexity-item">
+                            <strong>Best Case:</strong> O(n log h)
+                        </div>
+                        <div class="complexity-item">
+                            <strong>Average Case:</strong> O(n log h)
+                        </div>
+                        <div class="complexity-item">
+                            <strong>Worst Case:</strong> O(n log h)
+                        </div>
+                        <div class="complexity-item">
+                            <strong>Space:</strong> O(n)
+                        </div>
+                    </div>
+                    <p>Optimal output-sensitive complexity with binary search optimization for tangent finding on convex mini-hulls.</p>
+                </div>
+
+                <div class="algorithm-steps">
+                    <h3>Implementation Steps</h3>
+                    
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h4>Iterative Doubling</h4>
+                            <p>Try parameter values m = 2^(2^t) for t = 1, 2, 3, ... (m = 4, 16, 256, 65536, ...). This adaptive strategy finds the optimal parameter automatically.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h4>Point Partitioning</h4>
+                            <p>Divide input points into groups of size m. Each group will be processed independently to create mini-hulls.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h4>Mini-Hull Computation</h4>
+                            <p>Apply Graham's Scan to each group to compute convex mini-hulls. These contain all potentially relevant boundary points from each partition.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <h4>Optimized Jarvis March</h4>
+                            <p>Use Jarvis March to connect mini-hulls, with binary search for tangent finding (O(log m) per mini-hull). Includes collinear point handling for correctness.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">5</div>
+                        <div class="step-content">
+                            <h4>Success Condition Check</h4>
+                            <p>If hull completes within m steps, return result. Otherwise, try next m value. Fallback to Graham's Scan if iterations exceed reasonable bounds.</p>
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h4>Advantages</h4>
+                        <ul>
+                            <li>Optimal O(n log h) theoretical complexity</li>
+                            <li>Output-sensitive performance</li>
+                            <li>Combines benefits of Graham's and Jarvis</li>
+                            <li>Binary search optimization implemented</li>
+                            <li>Adaptive parameter selection</li>
+                            <li>Handles collinear points correctly</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h4>Disadvantages</h4>
+                        <ul>
+                            <li>High implementation complexity</li>
+                            <li>Significant constant factor overhead</li>
+                            <li>Slower than simpler algorithms for small inputs</li>
+                            <li>Multiple algorithm coordination required</li>
+                            <li>Binary search tangent finding is complex</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="algorithm-overview">
+                    <h3>Usage Recommendations</h3>
+                    <p><strong>Best for:</strong> Very large datasets (10,000+ points) with small expected hull sizes. Ideal when you need guaranteed optimal complexity regardless of input characteristics.</p>
+                    <p><strong>Consider alternatives when:</strong> Working with small to medium datasets where simpler algorithms have lower overhead, or when implementation complexity is a concern.</p>
+                </div>
+
+                <div class="algorithm-overview" style="background: var(--bg-secondary); border-left: 4px solid var(--primary); margin-top: 24px;">
+                    <h3>Implementation Notes</h3>
+                    <p>Our implementation includes the binary search optimization for tangent finding and proper collinear point handling. While theoretically optimal, the constant factors make it most beneficial for very large datasets with small hull ratios.</p>
+                </div>
+            `
+        },
+        
+        incremental: {
+            title: "Incremental Hull Algorithm",
+            content: `
+                <div class="algorithm-overview">
+                    <h3>Algorithm Overview</h3>
+                    <p>The Incremental Hull algorithm constructs the convex hull by processing points one at a time. It maintains the hull of processed points and efficiently updates it when adding each new point using binary search for tangent finding and hull splicing operations.</p>
+                </div>
+
+                <div class="complexity-info">
+                    <h4>Time Complexity Analysis</h4>
+                    <div class="complexity-grid">
+                        <div class="complexity-item">
+                            <strong>Best Case:</strong> O(n log n)
+                        </div>
+                        <div class="complexity-item">
+                            <strong>Average Case:</strong> O(n log h)
+                        </div>
+                        <div class="complexity-item">
+                            <strong>Worst Case:</strong> O(n log n)
+                        </div>
+                        <div class="complexity-item">
+                            <strong>Space:</strong> O(h)
+                        </div>
+                    </div>
+                    <p>Performance depends on point insertion order and hull size. Binary search optimization provides O(log h) tangent finding per point.</p>
+                </div>
+
+                <div class="algorithm-steps">
+                    <h3>Implementation Steps</h3>
+                    
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h4>Initialize Base Hull</h4>
+                            <p>Create initial hull from first few points. Handle degenerate cases (collinear points) and establish a valid starting convex polygon.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h4>Point Classification</h4>
+                            <p>For each new point, determine its position relative to the current hull: inside, on boundary, or outside using point-in-convex-polygon tests.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h4>Interior Point Handling</h4>
+                            <p>Skip points that lie inside the current hull as they don't affect the convex boundary. This optimization reduces unnecessary hull updates.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <h4>Tangent Computation</h4>
+                            <p>For exterior points, use binary search to find left and right tangent points on the current hull. These define the visible portion of the hull from the new point.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">5</div>
+                        <div class="step-content">
+                            <h4>Hull Splicing</h4>
+                            <p>Remove hull vertices between tangent points (now interior) and insert the new point, creating updated hull with proper vertex ordering.</p>
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <div class="pros-cons">
+                    <div class="pros">
+                        <h4>Advantages</h4>
+                        <ul>
+                            <li>Online algorithm suitable for streaming data</li>
+                            <li>Binary search optimization for tangent finding</li>
+                            <li>Good average-case performance</li>
+                            <li>Natural for dynamic scenarios</li>
+                            <li>Excellent for educational visualization</li>
+                            <li>Efficient point-in-polygon tests</li>
+                        </ul>
+                    </div>
+                    <div class="cons">
+                        <h4>Disadvantages</h4>
+                        <ul>
+                            <li>Performance sensitive to point insertion order</li>
+                            <li>Complex tangent finding implementation</li>
+                            <li>Hull splicing requires careful vertex management</li>
+                            <li>More implementation complexity than Graham's Scan</li>
+                            <li>Worst-case can approach O(n²) behavior</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="algorithm-overview">
+                    <h3>Usage Recommendations</h3>
+                    <p><strong>Best for:</strong> Online/streaming applications, educational demonstrations of hull evolution, or scenarios where points arrive dynamically and you need incremental updates.</p>
+                    <p><strong>Consider alternatives when:</strong> All points are available upfront and you need predictable performance, or when point insertion order might be adversarial.</p>
+                </div>
+
+                <div class="algorithm-overview" style="background: var(--bg-secondary); border-left: 4px solid var(--success); margin-top: 24px;">
+                    <h3>Educational Benefits</h3>
+                    <p>This algorithm excellently demonstrates how convex hulls evolve as points are added, making it valuable for understanding the geometric properties of convex hulls and the challenges of online computational geometry.</p>
+                </div>
+            `
+        }
+    };
+    
+    return algorithmInfo[algorithm] || {
+        title: "Algorithm Information",
+        content: "<p>Information not available for this algorithm.</p>"
+    };
+}
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeAlgorithmModal();
+    }
 });

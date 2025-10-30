@@ -159,10 +159,15 @@ class D3ConvexHullVisualizer {
     }
 
     render() {
+        // Debug logging
+        if (this.currentStep) {
+            console.log('🎨 Rendering step:', this.currentStep.type, this.currentStep.phase || '');
+        }
+        
         this.renderGrid();
+        this.renderPoints();  // Render points first so they appear behind hulls
         this.renderHull();
         this.renderTangents();
-        this.renderPoints();
         this.renderLabels();
         this.renderAnnotations();
     }
@@ -325,7 +330,32 @@ class D3ConvexHullVisualizer {
         
         // Show sorted points with indices during sorting
         if (this.currentStep.type === 'sorting') {
-            // Just show the points - they'll be colored by the point renderer
+            // Add visual indicators for sorted points
+            if (this.currentStep.sorted_points) {
+                this.currentStep.sorted_points.forEach((point, index) => {
+                    // Draw point index labels
+                    hullGroup.append('text')
+                        .attr('x', this.xScale(point.x) + 10)
+                        .attr('y', this.yScale(point.y) - 10)
+                        .text(`${index + 1}`)
+                        .style('fill', '#3b82f6')
+                        .style('font-size', '12px')
+                        .style('font-weight', 'bold')
+                        .style('text-anchor', 'middle')
+                        .style('background', 'white')
+                        .style('padding', '2px');
+                });
+                
+                // Draw sorting arrow
+                hullGroup.append('text')
+                    .attr('x', this.width / 2)
+                    .attr('y', 30)
+                    .text('Points sorted by x-coordinate →')
+                    .style('fill', '#3b82f6')
+                    .style('font-size', '14px')
+                    .style('font-weight', 'bold')
+                    .style('text-anchor', 'middle');
+            }
             return;
         }
         
@@ -407,36 +437,53 @@ class D3ConvexHullVisualizer {
                 .style('opacity', 0.8);
         }
         
-        // Show turn testing visualization
+        // Show turn testing visualization with enhanced graphics
         if (this.currentStep.phase === 'testing' && this.currentStep.test_points && this.currentStep.test_points.length === 3) {
             const [p1, p2, p3] = this.currentStep.test_points;
             const isLeftTurn = this.currentStep.is_left_turn;
             const testColor = isLeftTurn ? '#10b981' : '#ef4444';
             
-            // Draw the triangle formed by the three test points
+            // Draw the triangle formed by the three test points with animation
             const trianglePath = `M ${this.xScale(p1.x)} ${this.yScale(p1.y)} L ${this.xScale(p2.x)} ${this.yScale(p2.y)} L ${this.xScale(p3.x)} ${this.yScale(p3.y)} Z`;
             
             hullGroup.append('path')
                 .attr('d', trianglePath)
                 .style('fill', testColor)
-                .style('fill-opacity', 0.2)
+                .style('fill-opacity', 0.3)
                 .style('stroke', testColor)
-                .style('stroke-width', 2)
-                .style('stroke-dasharray', '4,2');
+                .style('stroke-width', 3)
+                .style('stroke-dasharray', '6,3')
+                .style('opacity', 0)
+                .transition()
+                .duration(300)
+                .style('opacity', 1);
             
-            // Add turn direction indicator
+            // Draw arrows showing the direction of the turn test
+            this.drawTurnArrows(hullGroup, p1, p2, p3, testColor);
+            
+            // Add turn direction indicator with better styling
             const centerX = (this.xScale(p1.x) + this.xScale(p2.x) + this.xScale(p3.x)) / 3;
             const centerY = (this.yScale(p1.y) + this.yScale(p2.y) + this.yScale(p3.y)) / 3;
             
             const turnSymbol = isLeftTurn ? '↺' : '↻';
-            const turnText = isLeftTurn ? 'Left Turn' : 'Right Turn';
+            const turnText = isLeftTurn ? 'Left Turn ✓' : 'Right Turn ✗';
+            
+            // Background circle for better visibility
+            hullGroup.append('circle')
+                .attr('cx', centerX)
+                .attr('cy', centerY)
+                .attr('r', 25)
+                .style('fill', 'white')
+                .style('stroke', testColor)
+                .style('stroke-width', 2)
+                .style('opacity', 0.9);
             
             hullGroup.append('text')
                 .attr('x', centerX)
                 .attr('y', centerY - 5)
                 .text(turnSymbol)
                 .style('fill', testColor)
-                .style('font-size', '16px')
+                .style('font-size', '20px')
                 .style('font-weight', 'bold')
                 .style('text-anchor', 'middle');
             
@@ -445,7 +492,7 @@ class D3ConvexHullVisualizer {
                 .attr('y', centerY + 15)
                 .text(turnText)
                 .style('fill', testColor)
-                .style('font-size', '10px')
+                .style('font-size', '12px')
                 .style('font-weight', 'bold')
                 .style('text-anchor', 'middle');
         }

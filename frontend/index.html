@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="css/modern-style.css">
     <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
+
 <body>
     <div id="app">
         <!-- Header -->
@@ -21,7 +23,7 @@
         <main class="main-layout">
             <!-- Left Sidebar -->
             <aside class="sidebar left-sidebar">
-                <!-- Step 1: Point Generation -->
+                <!-- Step 1: Algorithm Selection -->
                 <div class="workflow-step active" id="step-1" data-step="1">
                     <div class="step-header" onclick="toggleStep(1)">
                         <div class="step-indicator">
@@ -30,13 +32,13 @@
                         </div>
                         <div class="step-info">
                             <h3>Generate Points</h3>
-                            <p class="step-description" id="step-1-description">20 points generated</p>
+                            <p class="step-description" id="step-1-description">Create your dataset to explore</p>
                         </div>
                         <div class="step-toggle">
                             <span class="toggle-icon">▼</span>
                         </div>
                     </div>
-                    
+
                     <div class="step-content">
                         <!-- Point Count Selection -->
                         <div class="point-count-selection">
@@ -61,7 +63,7 @@
                                 </optgroup>
                             </select>
                         </div>
-                        
+
                         <div class="point-controls">
                             <button id="generate-random-btn" class="btn btn-primary">
                                 Generate Random
@@ -90,21 +92,24 @@
                         </div>
                         <div class="step-info">
                             <h3>Choose Algorithm</h3>
-                            <p class="step-description" id="step-2-description">Graham's Scan selected</p>
+                            <p class="step-description" id="step-2-description">Select your convex hull algorithm</p>
                         </div>
                         <div class="step-toggle">
                             <span class="toggle-icon">▶</span>
                         </div>
                     </div>
-                    
+
                     <div class="step-content" style="display: none;">
                         <div class="algorithm-grid">
-                            <label class="algorithm-card active" data-algorithm="graham">
-                                <input type="radio" name="algorithm" value="graham" checked>
+                            <label class="algorithm-card" data-algorithm="graham">
+                                <input type="radio" name="algorithm" value="graham">
                                 <div class="card-content">
                                     <span class="algorithm-name">Graham's Scan</span>
                                     <span class="complexity">O(n log n)</span>
                                 </div>
+                                <button class="info-button" onclick="showAlgorithmInfo('graham', event)" title="Learn about Graham's Scan">
+                                    <i class="info-icon">i</i>
+                                </button>
                             </label>
                             <label class="algorithm-card" data-algorithm="jarvis">
                                 <input type="radio" name="algorithm" value="jarvis">
@@ -112,6 +117,9 @@
                                     <span class="algorithm-name">Jarvis March</span>
                                     <span class="complexity">O(nh)</span>
                                 </div>
+                                <button class="info-button" onclick="showAlgorithmInfo('jarvis', event)" title="Learn about Jarvis March">
+                                    <i class="info-icon">i</i>
+                                </button>
                             </label>
                             <label class="algorithm-card" data-algorithm="chan">
                                 <input type="radio" name="algorithm" value="chan">
@@ -119,6 +127,9 @@
                                     <span class="algorithm-name">Chan's Algorithm</span>
                                     <span class="complexity">O(n log h)</span>
                                 </div>
+                                <button class="info-button" onclick="showAlgorithmInfo('chan', event)" title="Learn about Chan's Algorithm">
+                                    <i class="info-icon">i</i>
+                                </button>
                             </label>
                             <label class="algorithm-card" data-algorithm="incremental">
                                 <input type="radio" name="algorithm" value="incremental">
@@ -126,8 +137,12 @@
                                     <span class="algorithm-name">Incremental Hull</span>
                                     <span class="complexity">O(n log h)</span>
                                 </div>
+                                <button class="info-button" onclick="showAlgorithmInfo('incremental', event)" title="Learn about Incremental Hull">
+                                    <i class="info-icon">i</i>
+                                </button>
                             </label>
                         </div>
+                        <p class="help-text">Each algorithm has different strengths and time complexities</p>
                     </div>
                 </div>
 
@@ -140,13 +155,13 @@
                         </div>
                         <div class="step-info">
                             <h3>Run Visualization</h3>
-                            <p class="step-description" id="step-3-description">Ready to run Graham's Scan</p>
+                            <p class="step-description" id="step-3-description">Execute and watch the algorithm</p>
                         </div>
                         <div class="step-toggle">
                             <span class="toggle-icon">▶</span>
                         </div>
                     </div>
-                    
+
                     <div class="step-content" style="display: none;">
                         <div class="action-buttons">
                             <button id="run-btn" class="btn btn-primary">
@@ -182,7 +197,7 @@
                     </div>
                 </div>
                 <div id="visualization" class="visualization-area"></div>
-                
+
                 <!-- Animation Controls Below Canvas -->
                 <div class="animation-controls-bottom">
                     <div class="playback-controls">
@@ -207,7 +222,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div id="loading-overlay" class="loading-overlay hidden">
                     <div class="loading-spinner"></div>
                     <div class="loading-text">Computing convex hull...</div>
@@ -259,16 +274,17 @@
                 <div class="panel">
                     <h3>What is a Convex Hull?</h3>
                     <div class="help-content">
-                        <p>A <strong>convex hull</strong> is the smallest convex shape that contains all given points. Think of it as stretching a rubber band around all the points.</p>
+                        <p>A <strong>convex hull</strong> is the smallest convex shape that contains all given points.
+                            Think of it as stretching a rubber band around all the points.</p>
                         <div class="help-steps">
                             <div class="help-step">
                                 <strong>1. Generate Points:</strong> Create random points or click on the canvas
                             </div>
                             <div class="help-step">
-                                <strong>2. Choose Algorithm:</strong> Each has different time complexity
+                                <strong>2. Choose Algorithm:</strong> Select which convex hull algorithm to explore
                             </div>
                             <div class="help-step">
-                                <strong>3. Run & Watch:</strong> See step-by-step how the hull is built
+                                <strong>3. Run & Compare:</strong> Execute algorithms and see step-by-step visualization
                             </div>
                         </div>
                     </div>
@@ -320,14 +336,14 @@
     <script src="js/animation-controller.js"></script>
     <script src="js/point-generator.js"></script>
     <script src="js/modern-app.js"></script>
-    
+
     <!-- Workflow Functions -->
     <script>
         function toggleStep(stepNumber) {
             const step = document.getElementById(`step-${stepNumber}`);
             const content = step.querySelector('.step-content');
             const icon = step.querySelector('.toggle-icon');
-            
+
             if (step.classList.contains('active')) {
                 // Collapse current step
                 step.classList.remove('active');
@@ -340,25 +356,25 @@
                     s.querySelector('.step-content').style.display = 'none';
                     s.querySelector('.toggle-icon').textContent = '▶';
                 });
-                
+
                 // Expand clicked step
                 step.classList.add('active');
                 content.style.display = 'block';
                 icon.textContent = '▼';
             }
         }
-        
+
         function completeStep(stepNumber) {
             const step = document.getElementById(`step-${stepNumber}`);
             step.classList.add('completed');
             step.classList.remove('active');
-            
+
             // Collapse current step with animation
             const content = step.querySelector('.step-content');
             const icon = step.querySelector('.toggle-icon');
             content.style.display = 'none';
             icon.textContent = '▶';
-            
+
             // Enable and expand next step
             const nextStep = document.getElementById(`step-${stepNumber + 1}`);
             if (nextStep) {
@@ -367,28 +383,28 @@
                     nextStep.classList.add('active');
                     nextStep.querySelector('.step-content').style.display = 'block';
                     nextStep.querySelector('.toggle-icon').textContent = '▼';
-                    
+
                     // Enable buttons in next step
                     const buttons = nextStep.querySelectorAll('button');
                     buttons.forEach(btn => btn.disabled = false);
                 }, 200);
             }
         }
-        
+
         function resetWorkflow() {
             // Reset all steps
             document.querySelectorAll('.workflow-step').forEach((step, index) => {
                 step.classList.remove('completed', 'active');
                 step.querySelector('.step-content').style.display = 'none';
                 step.querySelector('.toggle-icon').textContent = '▶';
-                
+
                 // Disable buttons except in first step
                 if (index > 0) {
                     const buttons = step.querySelectorAll('button');
                     buttons.forEach(btn => btn.disabled = true);
                 }
             });
-            
+
             // Activate first step
             const firstStep = document.getElementById('step-1');
             firstStep.classList.add('active');
@@ -396,5 +412,20 @@
             firstStep.querySelector('.toggle-icon').textContent = '▼';
         }
     </script>
+
+    <!-- Algorithm Info Modal -->
+    <div id="algorithm-info-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Algorithm Information</h2>
+                <span class="close-button" onclick="closeAlgorithmModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
 </body>
+
 </html>
