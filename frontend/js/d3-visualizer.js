@@ -458,9 +458,6 @@ class D3ConvexHullVisualizer {
                 .duration(300)
                 .style('opacity', 1);
             
-            // Draw arrows showing the direction of the turn test
-            this.drawTurnArrows(hullGroup, p1, p2, p3, testColor);
-            
             // Add turn direction indicator with better styling
             const centerX = (this.xScale(p1.x) + this.xScale(p2.x) + this.xScale(p3.x)) / 3;
             const centerY = (this.yScale(p1.y) + this.yScale(p2.y) + this.yScale(p3.y)) / 3;
@@ -469,32 +466,34 @@ class D3ConvexHullVisualizer {
             const turnText = isLeftTurn ? 'Left Turn ✓' : 'Right Turn ✗';
             
             // Background circle for better visibility
-            hullGroup.append('circle')
-                .attr('cx', centerX)
-                .attr('cy', centerY)
-                .attr('r', 25)
-                .style('fill', 'white')
-                .style('stroke', testColor)
-                .style('stroke-width', 2)
-                .style('opacity', 0.9);
             
-            hullGroup.append('text')
+            const symbol = hullGroup.append('text')
                 .attr('x', centerX)
                 .attr('y', centerY - 5)
                 .text(turnSymbol)
                 .style('fill', testColor)
                 .style('font-size', '20px')
                 .style('font-weight', 'bold')
-                .style('text-anchor', 'middle');
+                .style('text-anchor', 'middle')
+                .attr('stroke', 'white')
+                .attr('stroke-width', 3)  // thickness of white outline
+                .attr('paint-order', 'stroke');
             
-            hullGroup.append('text')
+            const label = hullGroup.append('text')
                 .attr('x', centerX)
                 .attr('y', centerY + 15)
                 .text(turnText)
                 .style('fill', testColor)
                 .style('font-size', '12px')
                 .style('font-weight', 'bold')
-                .style('text-anchor', 'middle');
+                .style('text-anchor', 'middle')
+                .attr('stroke', 'white')
+                .attr('stroke-width', 3)  // thickness of white outline
+                .attr('paint-order', 'stroke');
+
+            symbol.raise();
+            label.raise();
+
         }
         
         // Show acceptance with green checkmark
