@@ -490,7 +490,7 @@ class ModernConvexHullApp {
             // Update step details
             const stepTitle = this.getStepTitle(step);
             const stepDescription = this.getStepDescription(step);
-            
+                        
             document.getElementById('step-title').textContent = stepTitle;
             document.getElementById('step-description').textContent = stepDescription;
             
@@ -594,51 +594,55 @@ class ModernConvexHullApp {
     getStepTitle(step) {
         if (!step) return 'Ready to Start';
         
-        const stepNum = this.currentStep + 1;
-        const totalSteps = this.currentResult.steps.length;
-        
         const titles = {
             graham: {
-                sorting: `Step ${stepNum}/${totalSteps}: Sorting Points`,
+                sorting: `Sorting Points`,
                 upper_hull: {
-                    processing: `Step ${stepNum}/${totalSteps}: Building Upper Hull`,
-                    popping: `Step ${stepNum}/${totalSteps}: Removing Non-Convex Point`,
-                    added: `Step ${stepNum}/${totalSteps}: Added to Upper Hull`
+                    processing: `Processing Point & Checking Turn`,
+                    testing: `Processing Point & Checking Turn`,
+                    popping: `Removing Non-Convex Point`,
+                    accepted: `Processing Point & Checking Turn`,
+                    added: `Added to Upper Hull`
                 },
                 lower_hull: {
-                    processing: `Step ${stepNum}/${totalSteps}: Building Lower Hull`,
-                    popping: `Step ${stepNum}/${totalSteps}: Removing Non-Convex Point`,
-                    added: `Step ${stepNum}/${totalSteps}: Added to Lower Hull`
+                    processing: `Processing Point & Checking Turn`,
+                    testing: `Processing Point & Checking Turn`,
+                    popping: `Removing Non-Convex Point`,
+                    accepted: `Processing Point & Checking Turn`,
+                    added: `Added to Lower Hull`
                 },
-                complete: `Step ${stepNum}/${totalSteps}: Graham's Scan Complete`
+                complete: `Graham's Scan Complete`
             },
             jarvis: {
-                jarvis_step: `Step ${stepNum}/${totalSteps}: Gift Wrapping`,
-                testing: `Step ${stepNum}/${totalSteps}: Testing Candidate`,
-                complete: `Step ${stepNum}/${totalSteps}: Wrapping Complete`
+                jarvis_step: `Gift Wrapping`,
+                testing: `Testing Candidate`,
+                candidate_selected: `Update Best`,
+                complete: `Wrapping Complete`
             },
             chan: {
-                mini_hull: `Step ${stepNum}/${totalSteps}: Computing Mini-Hull`,
-                jarvis_phase: `Step ${stepNum}/${totalSteps}: Connecting Hulls`,
-                connecting_edge: `Step ${stepNum}/${totalSteps}: Finding Connection`,
-                complete: `Step ${stepNum}/${totalSteps}: Algorithm Complete`
+                mini_hull: `Computing Mini-Hull`,
+                jarvis_phase: `Connecting Hulls`,
+                connecting_edge: `Finding Connection`,
+                complete: `Algorithm Complete`,
+                trying_m: `Testing Hull Size = ${step.m}`,
+                failed_m: `Hull Size Too Small — Expanding`
             },
             incremental: {
-                seed: `Step ${stepNum}/${totalSteps}: Seeding Hull`,
-                inside: `Step ${stepNum}/${totalSteps}: Point Inside Hull`,
-                tangents: `Step ${stepNum}/${totalSteps}: Finding Tangents`,
-                splice_done: `Step ${stepNum}/${totalSteps}: Splicing Point`,
-                complete: `Step ${stepNum}/${totalSteps}: Algorithm Complete`
+                seed: `Seeding Hull`,
+                inside: `Point Inside Hull`,
+                tangents: `Finding Tangents`,
+                splice_done: `Splicing Point`,
+                complete: `Algorithm Complete`
             }
         };
         
         const algoTitles = titles[this.currentAlgorithm] || {};
         
         if (step.type === 'upper_hull' || step.type === 'lower_hull') {
-            return algoTitles[step.type]?.[step.phase] || `Step ${stepNum}/${totalSteps}: ${step.type}`;
+            return algoTitles[step.type]?.[step.phase] || `${step.type} - ${step.phase}`;
         }
         
-        return algoTitles[step.type] || `Step ${stepNum}/${totalSteps}: ${step.type}`;
+        return algoTitles[step.type] || `${step.type}`;
     }
 
     getStepDescription(step) {
@@ -647,32 +651,40 @@ class ModernConvexHullApp {
         // Educational descriptions that explain WHY and HOW each algorithm works
         const descriptions = {
             graham: {
-                sorting: (s) => `Graham's Scan starts by sorting all points by x-coordinate (left to right). This ordering is crucial because we'll build the upper hull by processing points left-to-right, then the lower hull right-to-left. Think of it as preparing to trace the outline of a shape systematically.`,
+                sorting: (s) => `Graham's Scan begins by sorting all points by x-coordinate. This establishes a left-to-right order so we can trace the convex boundary-first the upper edge, then the lower. Sorting ensures a consistent progression across the plane.`,
                 upper_hull: {
-                    processing: (s) => `Building the upper hull: We process points left-to-right, maintaining only those that create "left turns" (counter-clockwise orientation). This forms the top boundary of our convex shape. Point ${s.point_index + 1} of ${s.sorted_points.length} is being considered.`,
-                    popping: (s) => `Removing point ${s.popped_point[0].toFixed(1)}, ${s.popped_point[1].toFixed(1)} because it creates a "right turn" (orientation: ${s.orientation.toFixed(3)}). For the upper hull, we need strict left turns to maintain convexity. This point would create an inward bend.`,
-                    added: (s) => `Added point ${s.current_point[0].toFixed(1)}, ${s.current_point[1].toFixed(1)} to upper hull. It creates a proper left turn, so it belongs on the upper boundary. Upper hull now has ${s.upper_hull.length} points.`
+                    processing: (s) => `Building the upper hull: we move left-to-right, adding points that preserve a counter-clockwise (left) turn. Each point is tested to check if it maintains a convex boundary. Currently examining point ${s.point_index + 1} of ${s.sorted_points.length}.`,
+                    testing: (s) => `Testing the turn direction with the new point. Orientation value: ${s.orientation.toFixed(3)}. ${s.orientation > 0 ? 'Positive = Left turn ✓' : 'Negative or zero = Right turn'}`,
+                    popping: (s) => `Right turn detected. The previous point disrupts convexity and is removed to restore the proper outward shape.`,
+                    accepted: (s) => `Left turn detected. The new point preserves convexity and will be kept for the next hull segment.`,
+                    added: (s) => `Point added successfully! The upper hull extends outward and now includes ${s.upper_hull.length} points.`
                 },
                 lower_hull: {
-                    processing: (s) => `Building the lower hull: We process points right-to-left, maintaining only those that create "left turns" when viewed in this direction. This forms the bottom boundary of our convex shape. Processing point ${s.point_index + 1} of ${s.sorted_points.length}.`,
-                    popping: (s) => `Removing point ${s.popped_point[0].toFixed(1)}, ${s.popped_point[1].toFixed(1)} because it creates a "right turn" (orientation: ${s.orientation.toFixed(3)}). For the lower hull, we need strict left turns to maintain convexity when processing right-to-left.`,
-                    added: (s) => `Added point ${s.current_point[0].toFixed(1)}, ${s.current_point[1].toFixed(1)} to lower hull. It creates a proper left turn in the right-to-left direction. Lower hull now has ${s.lower_hull.length} points.`
+                    processing: (s) => `Building the lower hull: we move right-to-left, adding points that preserve a counter-clockwise (left) turn in this direction. Each point is tested to check if it maintains a convex boundary. Currently examining point ${s.point_index + 1} of ${s.sorted_points.length}.`,
+                    testing: (s) => `Testing the turn direction at point (${s.current_point.x.toFixed(1)}, ${s.current_point.y.toFixed(1)}). Orientation value: ${s.orientation.toFixed(3)}. ${s.orientation > 0 ? 'Positive = Left turn ✓' : 'Negative or zero = Right turn'}`,
+                    popping: (s) => `Right turn detected. The previous point disrupts convexity and is removed to restore the proper outward shape.`,
+                    accepted: (s) => `Left turn detected. The new point preserves convexity and will be kept for the next hull segment.`,
+                    added: (s) => `Point added successfully! The lower hull extends outward and now includes ${s.lower_hull.length} points.`
                 },
                 complete: (s) => `Graham's Scan complete! We built the upper hull (${s.upper_hull.length} points) and lower hull (${s.lower_hull.length} points), then combined them into the final convex hull with ${s.final_hull.length} vertices. The algorithm maintains convexity by ensuring all turns are counter-clockwise.`
             },
             jarvis: {
-                jarvis_step: (s) => `Jarvis March works like "gift wrapping" - we start at the leftmost point and keep finding the next point that makes the most outward turn. We're looking for the point that would be most "counter-clockwise" from our current position, like wrapping string around the outside of all points.`,
-                testing: (s) => `We're testing if this point is better than our current candidate. We check the "turn direction" - ${s.orientation > 0 ? 'this point makes a more outward turn, so it\'s a better choice for the hull boundary' : s.orientation < 0 ? 'this point makes an inward turn, so our current candidate is still better' : 'this point is exactly in line - we decide based on distance'}.`,
-                complete: (s) => `Jarvis March complete! We "wrapped" around all points like putting a rubber band around them, always choosing the most outward point at each step. The final hull has ${s.final_hull.length} vertices.`
+                jarvis_step: (s) => `Jarvis March (“gift wrapping”) starts at the leftmost point and repeatedly picks the point with the largest outward turn from our current position, like wrapping string around the outside of all points.`,
+                testing: (s) => `Testing a candidate against the current best: Check the "turn direction" - ${s.orientation > 0 ? 'this point makes a more outward turn, it\'s a better choice for the hull boundary' : s.orientation < 0 ? 'this point makes an inward turn, our current candidate is still better' : 'this point is collinear — choose the farther one'}.`,
+                complete: (s) => `Jarvis March complete! We "wrapped" around all points like putting a rubber band around them, always choosing the most outward point at each step. The final hull has ${s.final_hull.length} vertices.`,
+                candidate_selected: (s) => `Best candidate updated. The new point makes a stronger outward turn from the current point, so it becomes part of the convex hull boundary.`
+
             },
             chan: {
-                mini_hull: (s) => `Chan's Algorithm is clever - it divides points into small groups and finds the convex hull of each group first. We're working on group ${s.group_idx + 1} of ${s.num_groups}. This "divide and conquer" approach makes the algorithm faster for large datasets.`,
-                jarvis_phase: (s) => `Now we use Jarvis March to connect all the mini-hulls together. Instead of checking every single point, we only need to check the boundaries of each mini-hull (shown as dotted polygons). This is much faster than checking all ${s.mini_hulls ? s.mini_hulls.flat().length : 'original'} points!`,
-                connecting_edge: (s) => `Finding the best connection from current point ${s.current_point ? `(${s.current_point.x.toFixed(1)}, ${s.current_point.y.toFixed(1)})` : ''} to mini-hull ${s.connecting_hull_idx + 1}. The dotted orange line shows the edge being considered for the final hull.`,
-                complete: (s) => `Chan's Algorithm complete! We divided the problem into smaller pieces (mini-hulls), then efficiently combined them. This hybrid approach gives us the best of both worlds.`
+                mini_hull: (s) => `Dividing points into smaller groups and building a convex hull for each. Processing group ${s.group_idx + 1} of ${s.num_groups}. This "divide and conquer" approach makes the algorithm faster for large datasets.`,
+                jarvis_phase: (s) => `Using Jarvis March to connect all the mini-hulls together. Instead of checking every single point, we only need to check the boundaries of each mini-hull (shown as dotted polygons). This is much faster than checking all ${s.mini_hulls ? s.mini_hulls.flat().length : 'original'} points!`,
+                connecting_edge: (s) => `Finding the next connecting edge from current point to mini-hull ${s.connecting_hull_idx + 1}. The dotted orange line shows the edge being considered for the final hull.`,
+                complete: (s) => `Chan's Algorithm complete! We divided the problem into smaller pieces (mini-hulls), then efficiently combined them. This hybrid approach gives us the best of both worlds.`,
+                trying_m: (s) => `Starting a new phase with hull size m = ${s.m}. The algorithm assumes the final hull will have no more than m vertices and proceeds to build mini-hulls of size ≤ m.`,
+                failed_m: (s) => `Phase with m = ${s.m} failed to find the complete hull. The actual hull has more than ${s.m} vertices, so we need to increase m and try again.`
             },
             incremental: {
-                seed: (s) => `Incremental Hull builds the convex hull one point at a time. We're starting with this point as our initial hull. This approach is useful when points arrive one by one, or when we want to see how the hull evolves.`,
+                seed: (s) => `Incremental Hull builds the convex hull one point at a time. We're starting with this triangle as our initial hull. This approach is useful when points arrive one by one, or when we want to see how the hull evolves.`,
                 inside: (s) => `This point is inside our current convex hull. Since the hull already contains this point within its boundary, we don't need to change anything. Only points on the outer boundary matter for the convex hull.`,
                 tangents: (s) => `This point is outside our current hull, so we need to expand the hull to include it. We find "tangent lines" - lines from the new point that just touch the hull boundary. These show us exactly where to "cut" the old hull and insert the new point.`,
                 splice_done: (s) => `We've successfully added this point to the hull! We removed the part of the old hull that was "hidden" behind the new point and connected the new point to the remaining boundary. The hull now has ${s.hull_after.length} vertices.`,
