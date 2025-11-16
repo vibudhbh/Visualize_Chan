@@ -7,46 +7,28 @@
 
 ## 📋 GitHub Pages Deployment Steps
 
-### Option 1: Deploy from `frontend` folder (Recommended)
+### Deploy from `docs` folder
+
+✅ **Frontend files are already copied to the `docs` folder!**
 
 1. **Push your code to GitHub**:
    ```bash
    git add .
-   git commit -m "Configure for Railway API and GitHub Pages"
+   git commit -m "Configure for Railway API and GitHub Pages deployment"
    git push origin main
    ```
 
 2. **Configure GitHub Pages**:
    - Go to your GitHub repository
    - Click **Settings** → **Pages**
-   - Under **Source**, select **Deploy from a branch**
-   - Under **Branch**, select `main` and `/frontend` folder
+   - Under **Source**, select **"Deploy from a branch"**
+   - Under **Branch**, select **`main`** and **`/docs`** folder
    - Click **Save**
 
 3. **Wait for deployment** (usually 1-2 minutes)
    - GitHub will build and deploy your site
    - Your site will be available at: `https://[your-username].github.io/[repo-name]/`
-
-### Option 2: Deploy from `docs` folder
-
-If you prefer using the `docs` folder:
-
-1. **Copy frontend files to docs**:
-   ```bash
-   cp -r frontend/* docs/
-   ```
-
-2. **Push to GitHub**:
-   ```bash
-   git add .
-   git commit -m "Add docs folder for GitHub Pages"
-   git push origin main
-   ```
-
-3. **Configure GitHub Pages**:
-   - Go to Settings → Pages
-   - Select `main` branch and `/docs` folder
-   - Click Save
+   - Check the **Actions** tab to see deployment progress
 
 ## 🔧 Configuration Details
 

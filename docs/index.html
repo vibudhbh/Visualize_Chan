@@ -6,20 +6,426 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Convex Hull Algorithm Visualizer</title>
     <link rel="stylesheet" href="css/modern-style.css">
-    <link rel="stylesheet" href="css/calm-design.css">
     <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 
 <body>
-    <!-- Redirect to load the actual content -->
-    <script>
-        window.location.href = '../frontend/index.html';
-    </script>
-    
-    <div style="text-align: center; padding: 50px;">
-        <h1>Loading Convex Hull Visualizer...</h1>
-        <p>If you are not redirected, <a href="../frontend/index.html">click here</a>.</p>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>Convex Hull Algorithm Visualizer</h1>
+                <p>Interactive educational tool for understanding convex hull algorithms</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-layout">
+            <!-- Left Sidebar -->
+            <aside class="sidebar left-sidebar">
+                <!-- Step 1: Algorithm Selection -->
+                <div class="workflow-step active" id="step-1" data-step="1">
+                    <div class="step-header" onclick="toggleStep(1)">
+                        <div class="step-indicator">
+                            <span class="step-number">1</span>
+                            <span class="step-status">○</span>
+                        </div>
+                        <div class="step-info">
+                            <h3>Generate Points</h3>
+                            <p class="step-description" id="step-1-description">Create your dataset to explore</p>
+                        </div>
+                        <div class="step-toggle">
+                            <span class="toggle-icon">▼</span>
+                        </div>
+                    </div>
+
+                    <div class="step-content">
+                        <!-- Point Count Selection -->
+                        <div class="point-count-selection">
+                            <label for="point-count-select" class="info-label">Point Count:</label>
+                            <select id="point-count-select" class="point-count-dropdown">
+                                <optgroup label="Learning (5-30)">
+                                    <option value="5">5 points - Quick Demo</option>
+                                    <option value="10">10 points - Basic Learning</option>
+                                    <option value="15">15 points - Detailed Study</option>
+                                    <option value="20" selected>20 points - Default</option>
+                                    <option value="30">30 points - Algorithm Comparison</option>
+                                </optgroup>
+                                <optgroup label="Performance (50-200)">
+                                    <option value="50">50 points - Performance Testing</option>
+                                    <option value="75">75 points - Efficiency Analysis</option>
+                                    <option value="100">100 points - Scalability Test</option>
+                                    <option value="200">200 points - Stress Test</option>
+                                </optgroup>
+                                <optgroup label="Advanced (300-500)">
+                                    <option value="300">300 points - Heavy Load</option>
+                                    <option value="500">500 points - Maximum Test</option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <div class="point-controls">
+                            <button id="generate-random-btn" class="btn btn-primary">
+                                Generate Random
+                            </button>
+                            <button id="generate-circle-btn" class="btn btn-outline">
+                                Generate Circle
+                            </button>
+                            <button id="clear-points-btn" class="btn btn-outline">
+                                Clear
+                            </button>
+                        </div>
+                        <div class="point-info">
+                            <span class="info-label">Points:</span>
+                            <span id="point-count" class="info-value">0</span>
+                        </div>
+                        <p class="help-text">Click on visualization to add points manually</p>
+                    </div>
+                </div>
+
+                <!-- Step 2: Algorithm Selection -->
+                <div class="workflow-step" id="step-2" data-step="2">
+                    <div class="step-header" onclick="toggleStep(2)">
+                        <div class="step-indicator">
+                            <span class="step-number">2</span>
+                            <span class="step-status">○</span>
+                        </div>
+                        <div class="step-info">
+                            <h3>Choose Algorithm</h3>
+                            <p class="step-description" id="step-2-description">Select your convex hull algorithm</p>
+                        </div>
+                        <div class="step-toggle">
+                            <span class="toggle-icon">▶</span>
+                        </div>
+                    </div>
+
+                    <div class="step-content" style="display: none;">
+                        <div class="algorithm-grid">
+                            <label class="algorithm-card" data-algorithm="graham">
+                                <input type="radio" name="algorithm" value="graham">
+                                <div class="card-content">
+                                    <span class="algorithm-name">Graham's Scan</span>
+                                    <span class="complexity">O(n log n)</span>
+                                </div>
+                                <button class="info-button" onclick="showAlgorithmInfo('graham', event)" title="Learn about Graham's Scan">
+                                    <i class="info-icon">i</i>
+                                </button>
+                            </label>
+                            <label class="algorithm-card" data-algorithm="jarvis">
+                                <input type="radio" name="algorithm" value="jarvis">
+                                <div class="card-content">
+                                    <span class="algorithm-name">Jarvis March</span>
+                                    <span class="complexity">O(nh)</span>
+                                </div>
+                                <button class="info-button" onclick="showAlgorithmInfo('jarvis', event)" title="Learn about Jarvis March">
+                                    <i class="info-icon">i</i>
+                                </button>
+                            </label>
+                            <label class="algorithm-card" data-algorithm="chan">
+                                <input type="radio" name="algorithm" value="chan">
+                                <div class="card-content">
+                                    <span class="algorithm-name">Chan's Algorithm</span>
+                                    <span class="complexity">O(n log h)</span>
+                                </div>
+                                <button class="info-button" onclick="showAlgorithmInfo('chan', event)" title="Learn about Chan's Algorithm">
+                                    <i class="info-icon">i</i>
+                                </button>
+                            </label>
+                            <label class="algorithm-card" data-algorithm="incremental">
+                                <input type="radio" name="algorithm" value="incremental">
+                                <div class="card-content">
+                                    <span class="algorithm-name">Incremental Hull</span>
+                                    <span class="complexity">O(n log h)</span>
+                                </div>
+                                <button class="info-button" onclick="showAlgorithmInfo('incremental', event)" title="Learn about Incremental Hull">
+                                    <i class="info-icon">i</i>
+                                </button>
+                            </label>
+                        </div>
+                        <p class="help-text">Each algorithm has different strengths and time complexities</p>
+                    </div>
+                </div>
+
+                <!-- Step 3: Run Visualization -->
+                <div class="workflow-step" id="step-3" data-step="3">
+                    <div class="step-header" onclick="toggleStep(3)">
+                        <div class="step-indicator">
+                            <span class="step-number">3</span>
+                            <span class="step-status">○</span>
+                        </div>
+                        <div class="step-info">
+                            <h3>Run Visualization</h3>
+                            <p class="step-description" id="step-3-description">Execute and watch the algorithm</p>
+                        </div>
+                        <div class="step-toggle">
+                            <span class="toggle-icon">▶</span>
+                        </div>
+                    </div>
+
+                    <div class="step-content" style="display: none;">
+                        <div class="action-buttons">
+                            <button id="run-btn" class="btn btn-primary">
+                                Run Algorithm
+                            </button>
+                            <button id="compare-btn" class="btn btn-secondary">
+                                Compare All
+                            </button>
+                        </div>
+                        <p class="help-text">Animation will start automatically after running</p>
+                    </div>
+                </div>
+
+                <!-- Persistent Clear Button -->
+                <div class="persistent-clear-section">
+                    <button id="persistent-clear-btn" class="btn btn-outline">
+                        Clear All
+                    </button>
+                </div>
+
+            </aside>
+
+            <!-- Visualization Area -->
+            <section class="visualization-container">
+                <div class="viz-header">
+                    <div class="status-info">
+                        <span id="algorithm-status" class="status-text">Ready</span>
+                        <span id="execution-status" class="status-detail">Select algorithm and click Run</span>
+                    </div>
+                    <div class="viz-controls">
+                        <button id="fullscreen-btn" class="icon-btn" title="Toggle Fullscreen">⛶</button>
+                        <button id="reset-zoom-btn" class="icon-btn" title="Reset View">🔍</button>
+                    </div>
+                </div>
+                <div id="visualization" class="visualization-area"></div>
+
+                <!-- Animation Controls Below Canvas -->
+                <div class="animation-controls-bottom">
+                    <div class="playback-controls">
+                        <button id="first-btn" class="control-btn" disabled title="First Step">⏮</button>
+                        <button id="prev-btn" class="control-btn" disabled title="Previous Step">⏪</button>
+                        <button id="play-btn" class="control-btn" disabled title="Play/Pause">▶</button>
+                        <button id="next-btn" class="control-btn" disabled title="Next Step">⏩</button>
+                        <button id="last-btn" class="control-btn" disabled title="Last Step">⏭</button>
+                    </div>
+                    <div class="step-info">
+                        <span>Step <span id="current-step">0</span> of <span id="total-steps">0</span></span>
+                    </div>
+                    <div class="speed-control">
+                        <div class="speed-header">
+                            <label>Speed</label>
+                            <span id="speed-display" class="speed-display">Slow</span>
+                        </div>
+                        <input type="range" id="speed-slider" min="1" max="10" value="3" class="speed-slider">
+                        <div class="speed-labels">
+                            <span>Slow</span>
+                            <span>Fast</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="loading-overlay" class="loading-overlay hidden">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Computing convex hull...</div>
+                </div>
+            </section>
+
+
+
+            <!-- Right Sidebar -->
+            <aside class="sidebar right-sidebar">
+                <div class="panel">
+                    <h3>Current Step</h3>
+                    <div class="step-details">
+                        <h4 id="step-title" class="step-title">Ready to Start</h4>
+                        <p id="step-description" class="step-description">
+                            Select an algorithm and click "Run Algorithm" to begin the visualization.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3>Algorithm Details</h3>
+                    <div class="details-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">Algorithm</span>
+                            <span id="current-algorithm" class="detail-value">Graham's Scan</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Complexity</span>
+                            <span id="time-complexity" class="detail-value">O(n log n)</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Hull Size</span>
+                            <span id="hull-size" class="detail-value">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Execution</span>
+                            <span id="execution-time" class="detail-value">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" id="comparison-panel" style="display: none;">
+                    <h3>Performance Comparison</h3>
+                    <div id="comparison-chart" class="comparison-chart"></div>
+                    <div id="comparison-table" class="comparison-table"></div>
+                </div>
+
+                <div class="panel">
+                    <h3>What is a Convex Hull?</h3>
+                    <div class="help-content">
+                        <p>A <strong>convex hull</strong> is the smallest convex shape that contains all given points.
+                            Think of it as stretching a rubber band around all the points.</p>
+                        <div class="help-steps">
+                            <div class="help-step">
+                                <strong>1. Generate Points:</strong> Create random points or click on the canvas
+                            </div>
+                            <div class="help-step">
+                                <strong>2. Choose Algorithm:</strong> Select which convex hull algorithm to explore
+                            </div>
+                            <div class="help-step">
+                                <strong>3. Run & Compare:</strong> Execute algorithms and see step-by-step visualization
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3>API Configuration</h3>
+                    <div class="api-config">
+                        <div class="input-group">
+                            <label for="api-url">API Endpoint</label>
+                            <input type="text" id="api-url" value="http://localhost:5001" class="api-input">
+                        </div>
+                        <button id="test-api-btn" class="btn btn-small">Test Connection</button>
+                        <div id="api-status" class="api-status">
+                            <span class="status-indicator"></span>
+                            <span class="status-text">Not connected</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <span id="status-message">Ready to visualize convex hull algorithms</span>
+                <span class="footer-info">Built with D3.js • Educational Tool</span>
+            </div>
+        </footer>
     </div>
+
+    <!-- Comparison Results Modal -->
+    <div id="comparison-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Algorithm Performance Comparison</h2>
+                <button id="close-comparison-modal" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="modal-comparison-table" class="comparison-table"></div>
+                <div id="modal-comparison-chart" class="comparison-chart"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/api-client.js"></script>
+    <script src="js/d3-visualizer.js"></script>
+    <script src="js/animation-controller.js"></script>
+    <script src="js/point-generator.js"></script>
+    <script src="js/modern-app.js"></script>
+
+    <!-- Workflow Functions -->
+    <script>
+        function toggleStep(stepNumber) {
+            const step = document.getElementById(`step-${stepNumber}`);
+            const content = step.querySelector('.step-content');
+            const icon = step.querySelector('.toggle-icon');
+
+            if (step.classList.contains('active')) {
+                // Collapse current step
+                step.classList.remove('active');
+                content.style.display = 'none';
+                icon.textContent = '▶';
+            } else {
+                // Collapse all other steps
+                document.querySelectorAll('.workflow-step').forEach(s => {
+                    s.classList.remove('active');
+                    s.querySelector('.step-content').style.display = 'none';
+                    s.querySelector('.toggle-icon').textContent = '▶';
+                });
+
+                // Expand clicked step
+                step.classList.add('active');
+                content.style.display = 'block';
+                icon.textContent = '▼';
+            }
+        }
+
+        function completeStep(stepNumber) {
+            const step = document.getElementById(`step-${stepNumber}`);
+            step.classList.add('completed');
+            step.classList.remove('active');
+
+            // Collapse current step with animation
+            const content = step.querySelector('.step-content');
+            const icon = step.querySelector('.toggle-icon');
+            content.style.display = 'none';
+            icon.textContent = '▶';
+
+            // Enable and expand next step
+            const nextStep = document.getElementById(`step-${stepNumber + 1}`);
+            if (nextStep) {
+                // Small delay for smooth transition
+                setTimeout(() => {
+                    nextStep.classList.add('active');
+                    nextStep.querySelector('.step-content').style.display = 'block';
+                    nextStep.querySelector('.toggle-icon').textContent = '▼';
+
+                    // Enable buttons in next step
+                    const buttons = nextStep.querySelectorAll('button');
+                    buttons.forEach(btn => btn.disabled = false);
+                }, 200);
+            }
+        }
+
+        function resetWorkflow() {
+            // Reset all steps
+            document.querySelectorAll('.workflow-step').forEach((step, index) => {
+                step.classList.remove('completed', 'active');
+                step.querySelector('.step-content').style.display = 'none';
+                step.querySelector('.toggle-icon').textContent = '▶';
+
+                // Disable buttons except in first step
+                if (index > 0) {
+                    const buttons = step.querySelectorAll('button');
+                    buttons.forEach(btn => btn.disabled = true);
+                }
+            });
+
+            // Activate first step
+            const firstStep = document.getElementById('step-1');
+            firstStep.classList.add('active');
+            firstStep.querySelector('.step-content').style.display = 'block';
+            firstStep.querySelector('.toggle-icon').textContent = '▼';
+        }
+    </script>
+
+    <!-- Algorithm Info Modal -->
+    <div id="algorithm-info-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Algorithm Information</h2>
+                <span class="close-button" onclick="closeAlgorithmModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>
