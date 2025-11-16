@@ -1,255 +1,159 @@
-# 🔺 Convex Hull Algorithm Visualizer
+# Convex Hull Algorithm Visualizer
 
-An interactive web application for visualizing and understanding convex hull algorithms with step-by-step animations and educational content.
+An interactive educational tool for visualizing and understanding convex hull algorithms with real-time step-by-step animations.
 
-## 🎯 Overview
+## 🌟 Features
 
-This project provides an interactive educational tool for learning convex hull algorithms. Users can generate point sets, select algorithms, and watch step-by-step visualizations that explain how each algorithm works.
+- **4 Algorithm Implementations**:
+  - Graham's Scan (O(n log n))
+  - Jarvis March (O(n×h))
+  - Chan's Algorithm (O(n log h)) with binary search optimization
+  - Incremental Hull (O(n log h))
 
-### ✨ Features
+- **Interactive Visualizations**:
+  - Real-time D3.js animations
+  - Step-by-step algorithm execution
+  - Color-coded visual feedback
+  - Adjustable animation speed
 
-- **🎮 Interactive Visualization**: Click to add points, generate random/circle patterns
-- **📚 Educational Content**: Step-by-step explanations of algorithm logic
-- **⚡ Real-time Animation**: Play, pause, step through algorithm execution
-- **📊 Performance Comparison**: Compare all algorithms on the same dataset
-- **🎨 Modern UI**: Clean, responsive design with intuitive workflow
-- **🔧 Configurable**: Adjustable animation speed, point counts, API endpoints
+- **Educational Content**:
+  - Algorithm information modals
+  - Complexity analysis
+  - Implementation details
+  - Usage recommendations
 
-## 🧮 Implemented Algorithms
+- **Performance Comparison**:
+  - Side-by-side algorithm comparison
+  - Execution time measurements
+  - Performance insights
 
-All algorithms are implemented in Python within the Flask API (`api/app.py`) and provide step-by-step animation data for the frontend visualization.
+## 🚀 Live Demo
 
-| Algorithm | Time Complexity | Best For | Description |
-|-----------|----------------|----------|-------------|
-| **Graham's Scan** | O(n log n) | General purpose | Sorts points and builds upper/lower hulls |
-| **Jarvis March** | O(nh) | Small hulls | "Gift wrapping" - finds next hull point iteratively |
-| **Chan's Algorithm** | O(n log h) | Unknown hull size | Hybrid approach combining Graham's + Jarvis |
-| **Incremental Hull** | O(n log h) | Online insertion | Builds hull by adding one point at a time |
+- **Frontend**: [Your GitHub Pages URL]
+- **API**: https://visualizechan-production.up.railway.app
 
-## 🚀 Quick Start
+## 🛠️ Technology Stack
 
-### Option 1: Local Development
+### Frontend
+- HTML5, CSS3, JavaScript (ES6+)
+- D3.js for visualizations
+- Responsive design
 
-1. **Clone the repository**
+### Backend
+- Python 3.x
+- Flask web framework
+- Flask-CORS for cross-origin requests
+- Optimized algorithm implementations
+
+## 📦 Local Development
+
+### Prerequisites
+- Python 3.8+
+- Modern web browser
+
+### Setup
+
+1. **Clone the repository**:
    ```bash
-   git clone https://github.com/yourusername/convex-hull-visualizer.git
-   cd convex-hull-visualizer
+   git clone [your-repo-url]
+   cd Visualize_Chan
    ```
 
-2. **Start the backend API**
+2. **Install Python dependencies**:
    ```bash
-   cd api
    pip install -r requirements.txt
-   python app.py
    ```
-   The API will run on `http://localhost:5001`
 
-3. **Open the frontend**
+3. **Run the API server**:
    ```bash
-   cd frontend
-   # Open index.html in your browser or use a local server:
-   python -m http.server 8000
+   python api/app.py
    ```
-   Navigate to `http://localhost:8000`
 
-### Option 2: Quick Local Run
+4. **Open the frontend**:
+   - Open `frontend/index.html` in your browser
+   - Or use a local server:
+     ```bash
+     python -m http.server 8000
+     ```
+   - Navigate to `http://localhost:8000/frontend/`
 
-Use the provided script:
-```bash
-chmod +x run-local.sh
-./run-local.sh
-```
+## 🌐 Deployment
 
-## 📁 Project Structure
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions.
 
-```
-convex-hull-visualizer/
-├── 📁 frontend/                 # Web application
-│   ├── index.html              # Main HTML file
-│   ├── 📁 css/
-│   │   └── modern-style.css    # Styling
-│   └── 📁 js/
-│       ├── modern-app.js       # Main application logic
-│       ├── d3-visualizer.js    # D3.js visualization
-│       ├── api-client.js       # API communication
-│       ├── animation-controller.js # Animation controls
-│       └── point-generator.js  # Point generation utilities
-│
-├── 📁 api/                     # Python Flask backend
-│   ├── app.py                  # Main API server with all algorithms
-│   ├── requirements.txt        # Python dependencies
-│   └── README.md              # API documentation
-│
-├── 📄 README.md               # This file
-├── 📄 DEPLOYMENT.md           # Deployment instructions
-├── 📄 requirements.txt        # Root Python dependencies
-└── 🔧 run-local.sh           # Quick start script
-```
+### Quick Deploy
 
-## 🎮 How to Use
+1. **Backend (Railway)**: ✅ Already deployed
+2. **Frontend (GitHub Pages)**:
+   - Push code to GitHub
+   - Enable GitHub Pages in repository settings
+   - Select `main` branch and `/frontend` folder
 
-### 1. Generate Points
-- **Random Points**: Click "Generate Random" for scattered points
-- **Circle Points**: Click "Generate Circle" for points on a circle
-- **Manual Points**: Click directly on the visualization canvas
-- **Point Count**: Select from 5 to 500 points using the dropdown
+## 🎓 Educational Use
 
-### 2. Choose Algorithm
-- Select one of the four convex hull algorithms
-- Each shows its time complexity and characteristics
-- Graham's Scan is selected by default
+This visualizer is designed for:
+- Computer Science students learning computational geometry
+- Algorithm analysis and comparison
+- Understanding time complexity in practice
+- Interactive learning and exploration
 
-### 3. Run Visualization
-- Click "Run Algorithm" to start the step-by-step animation
-- Use playback controls to pause, step forward/backward
-- Adjust animation speed with the slider
-- Click "Compare All" to benchmark all algorithms
+## 🧮 Algorithm Implementations
 
-### 4. Learn and Explore
-- Read the step-by-step explanations in the right panel
-- Observe how different algorithms approach the same problem
-- Try different point distributions to see algorithm behavior
+### Graham's Scan
+- Sorts points and uses stack-based approach
+- Builds upper and lower hulls separately
+- Uses left turn test for convexity
 
-## 🛠️ Development
+### Jarvis March
+- Output-sensitive algorithm
+- "Gift wrapping" approach
+- Excellent for small hulls
 
-### Frontend Technologies
-- **Vanilla JavaScript**: No frameworks, pure JS for performance
-- **D3.js**: Data visualization and SVG manipulation
-- **Modern CSS**: CSS Grid, Flexbox, custom properties
-- **Responsive Design**: Works on desktop and mobile
+### Chan's Algorithm
+- Hybrid approach combining Graham's and Jarvis
+- Iterative doubling for optimal parameter finding
+- Binary search optimization for tangent finding
+- Handles collinear points correctly
 
-### Backend Technologies
-- **Python 3.8+**: Core language
-- **Flask**: Lightweight web framework
-- **NumPy**: Numerical computations
-- **CORS**: Cross-origin resource sharing
+### Incremental Hull
+- Processes points one at a time
+- Binary search for tangent finding
+- Good for streaming data
 
-### API Endpoints
+## 📊 Performance Characteristics
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/graham` | POST | Run Graham's Scan algorithm |
-| `/jarvis` | POST | Run Jarvis March algorithm |
-| `/chan` | POST | Run Chan's Algorithm |
-| `/incremental` | POST | Run Incremental Hull algorithm |
-| `/compare` | POST | Compare all algorithms |
-| `/health` | GET | API health check |
+| Algorithm | Best Case | Average Case | Worst Case | Space |
+|-----------|-----------|--------------|------------|-------|
+| Graham's Scan | O(n log n) | O(n log n) | O(n log n) | O(n) |
+| Jarvis March | O(n) | O(n×h) | O(n²) | O(h) |
+| Chan's Algorithm | O(n log h) | O(n log h) | O(n log h) | O(n) |
+| Incremental Hull | O(n log n) | O(n log h) | O(n log n) | O(h) |
 
-### Request Format
-```json
-{
-  "points": [
-    {"x": 10, "y": 4},
-    {"x": 7, "y": 2},
-    {"x": 8, "y": 1}
-  ]
-}
-```
-
-### Response Format
-```json
-{
-  "algorithm": "graham",
-  "hull": [{"x": 6, "y": -1}, {"x": 15, "y": 1}],
-  "steps": [...],
-  "stats": {
-    "execution_time_ms": 1.23,
-    "hull_size": 6,
-    "step_count": 15
-  }
-}
-```
-
-## 🎓 Educational Content
-
-### Algorithm Explanations
-Each algorithm includes detailed explanations:
-- **Why it works**: Mathematical foundation
-- **How it works**: Step-by-step process
-- **When to use it**: Best use cases and trade-offs
-
-### Complexity Analysis
-- Visual comparison of time complexities
-- Real-world performance measurements
-- Input size vs. execution time graphs
-
-### Interactive Learning
-- Hover over points to see coordinates
-- Click through algorithm steps manually
-- Compare different approaches on same data
-
-## 🚀 Deployment
-
-### Local Development
-```bash
-# Backend
-cd api && python app.py
-
-# Frontend (choose one)
-cd frontend && python -m http.server 8000
-# OR open index.html directly in browser
-```
-
-### Production Deployment
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions on:
-- Heroku deployment
-- Docker containerization
-- Static site hosting (Netlify, Vercel)
-- Custom server setup
+*where n = number of points, h = hull size*
 
 ## 🤝 Contributing
 
-Contributions are welcome! Here's how to get started:
+Contributions are welcome! Feel free to:
+- Report bugs
+- Suggest new features
+- Improve documentation
+- Optimize algorithms
 
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Make your changes**
-4. **Test thoroughly**
-5. **Commit your changes**: `git commit -m 'Add amazing feature'`
-6. **Push to the branch**: `git push origin feature/amazing-feature`
-7. **Open a Pull Request**
+## 📝 License
 
-### Areas for Contribution
-- 🎨 **UI/UX Improvements**: Better animations, mobile responsiveness
-- 🧮 **New Algorithms**: QuickHull, Divide & Conquer, 3D hulls
-- 📚 **Educational Content**: More detailed explanations, exercises
-- 🔧 **Performance**: Algorithm optimizations, better visualizations
-- 🐛 **Bug Fixes**: Report and fix issues
+[Your License Here]
 
-## 📚 Learning Resources
+## 👏 Acknowledgments
 
-### Computational Geometry
-- [Computational Geometry: Algorithms and Applications](https://www.cs.uu.nl/geobook/)
-- [Introduction to Algorithms (CLRS)](https://mitpress.mit.edu/books/introduction-algorithms-third-edition)
+- Algorithm implementations based on computational geometry principles
+- D3.js for powerful visualizations
+- Railway for backend hosting
+- GitHub Pages for frontend hosting
 
-### Algorithm Visualizations
-- [VisuAlgo - Convex Hull](https://visualgo.net/en/convexhull)
-- [Algorithm Visualizer](https://algorithm-visualizer.org/)
+## 📧 Contact
 
-### Research Papers
-- Graham, R.L. (1972). "An Efficient Algorithm for Determining the Convex Hull"
-- Jarvis, R.A. (1973). "On the Identification of the Convex Hull"
-- Chan, T.M. (1996). "Optimal Output-Sensitive Convex Hull Algorithms"
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **D3.js Community**: For the amazing visualization library
-- **Computational Geometry Textbooks**: For algorithm implementations
-- **Educational Visualization Tools**: For inspiration on interactive learning
-- **Open Source Community**: For tools and libraries that made this possible
-
-## 📞 Support
-
-- 🐛 **Bug Reports**: [Open an issue](https://github.com/yourusername/convex-hull-visualizer/issues)
-- 💡 **Feature Requests**: [Start a discussion](https://github.com/yourusername/convex-hull-visualizer/discussions)
-- 📧 **Contact**: [your.email@example.com](mailto:your.email@example.com)
+[Your Contact Information]
 
 ---
 
-**Made with ❤️ for computational geometry education**
-
-⭐ **Star this repo if you found it helpful!**
+Built with ❤️ for computer science education

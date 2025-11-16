@@ -1,275 +1,145 @@
-# 🚀 Deployment Guide
+# Deployment Guide
 
-This guide explains how to deploy the Convex Hull Visualizer using Flask API + GitHub Pages architecture.
+## 🚀 Deployed Application
 
-## 📋 Architecture Overview
+- **Frontend (GitHub Pages)**: Will be at `https://[your-username].github.io/[repo-name]/`
+- **Backend API (Railway)**: `https://visualizechan-production.up.railway.app`
 
-```
-┌─────────────────┐    HTTP/CORS    ┌─────────────────┐
-│   GitHub Pages  │ ◄──────────────► │   Flask API     │
-│   (Frontend)    │                  │   (Backend)     │
-│                 │                  │                 │
-│ • HTML/CSS/JS   │                  │ • Python Code  │
-│ • Static Files  │                  │ • Algorithms   │
-│ • Free Hosting  │                  │ • REST API     │
-└─────────────────┘                  └─────────────────┘
-```
+## 📋 GitHub Pages Deployment Steps
 
-## 🎯 Benefits
+### Option 1: Deploy from `frontend` folder (Recommended)
 
-- ✅ **Free frontend hosting** (GitHub Pages)
-- ✅ **Use existing Python code** (no rewriting)
-- ✅ **Scalable backend** (deploy to Heroku, Railway, etc.)
-- ✅ **Easy maintenance** (separate concerns)
-- ✅ **CORS enabled** (cross-origin requests)
-
-## 📦 Step 1: Deploy the API Backend
-
-### Option A: Heroku (Recommended)
-
-1. **Create Heroku account** at https://heroku.com
-
-2. **Install Heroku CLI**:
+1. **Push your code to GitHub**:
    ```bash
-   # macOS
-   brew tap heroku/brew && brew install heroku
-   
-   # Windows
-   # Download from https://devcenter.heroku.com/articles/heroku-cli
+   git add .
+   git commit -m "Configure for Railway API and GitHub Pages"
+   git push origin main
    ```
 
-3. **Login to Heroku**:
+2. **Configure GitHub Pages**:
+   - Go to your GitHub repository
+   - Click **Settings** → **Pages**
+   - Under **Source**, select **Deploy from a branch**
+   - Under **Branch**, select `main` and `/frontend` folder
+   - Click **Save**
+
+3. **Wait for deployment** (usually 1-2 minutes)
+   - GitHub will build and deploy your site
+   - Your site will be available at: `https://[your-username].github.io/[repo-name]/`
+
+### Option 2: Deploy from `docs` folder
+
+If you prefer using the `docs` folder:
+
+1. **Copy frontend files to docs**:
    ```bash
-   heroku login
+   cp -r frontend/* docs/
    ```
 
-4. **Create Heroku app**:
+2. **Push to GitHub**:
    ```bash
-   heroku create your-convex-hull-api
+   git add .
+   git commit -m "Add docs folder for GitHub Pages"
+   git push origin main
    ```
 
-5. **Deploy API**:
-   ```bash
-   # From your project root
-   git subtree push --prefix api heroku main
-   ```
+3. **Configure GitHub Pages**:
+   - Go to Settings → Pages
+   - Select `main` branch and `/docs` folder
+   - Click Save
 
-6. **Your API will be available** at:
-   ```
-   https://your-convex-hull-api.herokuapp.com
-   ```
+## 🔧 Configuration Details
 
-### Option B: Railway
+### API Configuration
+The frontend is now configured to use your Railway API:
+- **API URL**: `https://visualizechan-production.up.railway.app`
+- **CORS**: Already enabled in Flask backend
+- **Endpoints**: All algorithm endpoints are accessible
 
-1. **Go to** https://railway.app
-2. **Connect your GitHub repository**
-3. **Set root directory** to `api`
-4. **Deploy automatically**
+### Files Updated
+- ✅ `frontend/js/api-client.js` - Updated to use Railway API URL
+- ✅ `api/app.py` - CORS already configured
+- ✅ All frontend files ready for static hosting
 
-### Option C: Render
+## 🧪 Testing Your Deployment
 
-1. **Go to** https://render.com
-2. **Create new Web Service**
-3. **Connect repository**
-4. **Set:**
-   - **Root Directory**: `api`
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `gunicorn app:app`
+After deployment, test your site:
 
-## 🌐 Step 2: Deploy the Frontend
+1. **Visit your GitHub Pages URL**
+2. **Check API connection** - Should show "Connected" in the UI
+3. **Test an algorithm**:
+   - Generate some points
+   - Select an algorithm (e.g., Graham's Scan)
+   - Click "Run Visualization"
+   - Verify the visualization works
 
-### GitHub Pages (Recommended)
+## 🐛 Troubleshooting
 
-1. **Push your code** to GitHub repository
+### API Connection Issues
+If you see "API Disconnected":
+- Check that your Railway service is running
+- Verify the API URL in `frontend/js/api-client.js`
+- Check browser console for CORS errors
 
-2. **Go to repository Settings** → Pages
+### GitHub Pages Not Loading
+- Wait 2-3 minutes after enabling GitHub Pages
+- Check the Actions tab for build status
+- Ensure the correct branch and folder are selected
 
-3. **Configure source**:
-   - **Source**: Deploy from a branch
-   - **Branch**: `main` (or your default branch)
-   - **Folder**: `/frontend`
+### CORS Errors
+If you see CORS errors in the browser console:
+- Verify `flask_cors` is installed on Railway
+- Check that `CORS(app)` is in your `api/app.py`
+- Redeploy your Railway service if needed
 
-4. **Save** - GitHub will build and deploy your site
+## 📝 Custom Domain (Optional)
 
-5. **Your frontend will be available** at:
-   ```
-   https://yourusername.github.io/your-repo-name
-   ```
+To use a custom domain:
 
-### Alternative: Netlify
+1. **For GitHub Pages**:
+   - Add a `CNAME` file in your frontend folder
+   - Configure DNS settings with your domain provider
 
-1. **Go to** https://netlify.com
-2. **Connect GitHub repository**
-3. **Set build settings**:
-   - **Base directory**: `frontend`
-   - **Publish directory**: `frontend`
-4. **Deploy**
+2. **For Railway API**:
+   - Go to Railway dashboard → Settings → Domains
+   - Add your custom domain
+   - Update the API URL in `frontend/js/api-client.js`
 
-### Alternative: Vercel
+## 🔄 Updating Your Deployment
 
-1. **Go to** https://vercel.com
-2. **Import project** from GitHub
-3. **Set root directory** to `frontend`
-4. **Deploy**
-
-## 🔧 Step 3: Configure API Connection
-
-1. **Open your deployed frontend**
-
-2. **Update API URL** in the configuration panel:
-   ```
-   https://your-convex-hull-api.herokuapp.com
-   ```
-
-3. **Test connection** using the "Test Connection" button
-
-4. **Verify** all algorithms work correctly
-
-## ✅ Step 4: Verification
-
-### Test the Complete System
-
-1. **Open frontend URL**
-2. **Generate some points** (click "Generate Random")
-3. **Select an algorithm** (Graham's Scan)
-4. **Click "Run Algorithm"**
-5. **Verify** the convex hull is computed and displayed
-6. **Test animation controls** (play, step through)
-7. **Try "Compare All"** to test multiple algorithms
-
-### Expected Results
-
-- ✅ Points appear on canvas
-- ✅ Algorithm executes successfully
-- ✅ Convex hull is drawn
-- ✅ Animation controls work
-- ✅ Step-by-step visualization works
-- ✅ Performance metrics are shown
-
-## 🛠️ Troubleshooting
-
-### CORS Issues
-
-If you see CORS errors in browser console:
-
-1. **Check API CORS configuration** in `api/app.py`
-2. **Verify** Flask-CORS is installed
-3. **Ensure** API allows your frontend domain
-
-### API Connection Failed
-
-1. **Check API URL** is correct
-2. **Verify API is deployed** and running
-3. **Test API directly**:
-   ```bash
-   curl https://your-api-url.herokuapp.com/health
-   ```
-
-### Frontend Not Loading
-
-1. **Check GitHub Pages settings**
-2. **Verify** `/frontend` folder is set as source
-3. **Check** for JavaScript errors in browser console
-
-### Algorithm Errors
-
-1. **Check API logs** on your hosting platform
-2. **Verify** Python algorithm files are included
-3. **Test** with simple point sets first
-
-## 🔄 Updates and Maintenance
-
-### Updating the API
-
+### Update Frontend:
 ```bash
-# Make changes to api/ folder
-git add api/
-git commit -m "Update API"
-git push origin main
-
-# Deploy to Heroku
-git subtree push --prefix api heroku main
-```
-
-### Updating the Frontend
-
-```bash
-# Make changes to frontend/ folder
 git add frontend/
 git commit -m "Update frontend"
 git push origin main
-
-# GitHub Pages will auto-deploy
 ```
+GitHub Pages will automatically redeploy.
 
-## 📊 Monitoring
-
-### API Monitoring
-
-- **Heroku**: Check logs with `heroku logs --tail`
-- **Railway**: View logs in dashboard
-- **Render**: Check logs in service dashboard
-
-### Frontend Monitoring
-
-- **GitHub Pages**: Check Actions tab for deployment status
-- **Browser Console**: Check for JavaScript errors
-- **Network Tab**: Verify API requests are successful
-
-## 🔒 Security Considerations
-
-### Production Checklist
-
-- [ ] **Disable debug mode** in API (`DEBUG=False`)
-- [ ] **Configure CORS** for specific domains only
-- [ ] **Use HTTPS** for both frontend and API
-- [ ] **Add rate limiting** to API if needed
-- [ ] **Validate all inputs** thoroughly
-- [ ] **Monitor API usage** and logs
-
-### Environment Variables
-
-Set these in your API hosting platform:
-
+### Update Backend:
 ```bash
-DEBUG=False
-PORT=5000
+git add api/
+git commit -m "Update API"
+git push origin main
 ```
+Railway will automatically redeploy if connected to your repo.
 
-## 💰 Cost Considerations
+## ✅ Deployment Checklist
 
-### Free Tier Limits
-
-- **GitHub Pages**: Free for public repositories
-- **Heroku**: 550-1000 free hours/month
-- **Railway**: $5/month after free trial
-- **Render**: 750 hours/month free
-
-### Scaling
-
-If you need more resources:
-- **Heroku**: Upgrade to paid dynos
-- **Railway**: Pay-as-you-go pricing
-- **Render**: Paid plans available
+- [x] Railway API deployed and accessible
+- [x] Frontend configured with Railway API URL
+- [x] CORS enabled on backend
+- [ ] Code pushed to GitHub
+- [ ] GitHub Pages configured
+- [ ] Site tested and working
+- [ ] All algorithms tested
+- [ ] Educational modals working
 
 ## 🎉 Success!
 
-Once deployed, you'll have:
+Once deployed, your Convex Hull Visualizer will be:
+- **Publicly accessible** via GitHub Pages
+- **Fully functional** with Railway backend
+- **Educational** with algorithm information modals
+- **Interactive** with real-time visualizations
 
-- ✅ **Professional web application** accessible worldwide
-- ✅ **Educational tool** for convex hull algorithms
-- ✅ **Interactive visualizations** with step-by-step animations
-- ✅ **Algorithm comparisons** and performance metrics
-- ✅ **Mobile-friendly** responsive design
-
-Your Convex Hull Visualizer is now live and ready to help people learn about computational geometry! 🎊
-
-## 🔗 Example URLs
-
-After deployment, your URLs might look like:
-
-- **Frontend**: https://yourusername.github.io/convex-hull-visualizer
-- **API**: https://convex-hull-api.herokuapp.com
-- **Health Check**: https://convex-hull-api.herokuapp.com/health
-
-Share these URLs to let others explore convex hull algorithms interactively!
+Share your deployed site with students and developers! 🚀

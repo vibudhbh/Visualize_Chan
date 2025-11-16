@@ -4,7 +4,7 @@
  */
 
 class ConvexHullAPI {
-    constructor(baseUrl = 'http://localhost:5001') {
+    constructor(baseUrl = 'https://visualizechan-production.up.railway.app') {
         this.baseUrl = baseUrl;
         this.isConnected = false;
     }
