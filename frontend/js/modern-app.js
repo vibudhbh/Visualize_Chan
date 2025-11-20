@@ -1339,7 +1339,7 @@ function getAlgorithmInfo(algorithm) {
                             <strong>Worst Case:</strong> O(n log n)
                         </div>
                         <div class="complexity-item">
-                            <strong>Space:</strong> O(h)
+                            <strong>Space:</strong> O(n)
                         </div>
                     </div>
                     <p>Performance depends on point insertion order and hull size. Binary search optimization provides O(log h) tangent finding per point.</p>
