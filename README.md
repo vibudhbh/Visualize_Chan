@@ -8,7 +8,7 @@ An interactive educational tool for visualizing and understanding convex hull al
   - Graham's Scan (O(n log n))
   - Jarvis March (O(n×h))
   - Chan's Algorithm (O(n log h)) with binary search optimization
-  - Incremental Hull (O(n log h))
+  - Incremental Hull (O(n log n))
 
 - **Interactive Visualizations**:
   - Real-time D3.js animations
@@ -127,7 +127,7 @@ This visualizer is designed for:
 | Graham's Scan | O(n log n) | O(n log n) | O(n log n) | O(n) |
 | Jarvis March | O(n) | O(n×h) | O(n²) | O(h) |
 | Chan's Algorithm | O(n log h) | O(n log h) | O(n log h) | O(n) |
-| Incremental Hull | O(n log n) | O(n log h) | O(n log n) | O(h) |
+| Incremental Hull | O(n log n) | O(n log n) | O(n log n) | O(n) |
 
 *where n = number of points, h = hull size*
 
