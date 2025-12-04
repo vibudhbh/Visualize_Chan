@@ -17,6 +17,9 @@
                 <h1>Convex Hull Algorithm Visualizer</h1>
                 <p>Interactive educational tool for understanding convex hull algorithms</p>
             </div>
+            <button id="project-info-btn" class="header-info-btn" onclick="openProjectInfoModal()" title="Project Information">
+                <span class="info-icon">i</span>
+            </button>
         </header>
 
         <!-- Main Content -->
@@ -268,25 +271,6 @@
                 </div>
 
                 <div class="panel">
-                    <h3>What is a Convex Hull?</h3>
-                    <div class="help-content">
-                        <p>A <strong>convex hull</strong> is the smallest convex shape that contains all given points.
-                            Think of it as stretching a rubber band around all the points.</p>
-                        <div class="help-steps">
-                            <div class="help-step">
-                                <strong>1. Generate Points:</strong> Create random points or click on the canvas
-                            </div>
-                            <div class="help-step">
-                                <strong>2. Choose Algorithm:</strong> Select which convex hull algorithm to explore
-                            </div>
-                            <div class="help-step">
-                                <strong>3. Run & Compare:</strong> Execute algorithms and see step-by-step visualization
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="panel">
                     <h3>API Configuration</h3>
                     <div class="api-config">
                         <div class="input-group">
@@ -421,6 +405,94 @@
             </div>
         </div>
     </div>
+
+    <!-- Project Info Modal -->
+    <div id="project-info-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content project-info-modal">
+            <div class="modal-header">
+                <h2>About This Project</h2>
+                <button id="close-project-info-modal" class="modal-close" onclick="closeProjectInfoModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="project-section">
+                    <h3>Problem Statement</h3>
+                    <p>This visualization demonstrates how different convex hull algorithms compute the smallest convex polygon that encloses a set of points in 2D space. We aim to provide an interactive, step-by-step educational tool that helps users understand the mechanics and efficiency of various computational geometry algorithms.</p>
+                </div>
+
+                <div class="project-section">
+                    <h3>Background & Approach</h3>
+                    <p>The convex hull problem is fundamental in computational geometry with applications in pattern recognition, image processing, and collision detection. Our approach implements four classical algorithms: Graham's Scan, Jarvis March (Gift Wrapping), Chan's Algorithm, and Incremental Hull construction.</p>
+                    
+                    <p>We assume that input points are in general position (no three collinear points) for simplicity, though our implementations handle edge cases. The visualization uses D3.js for rendering and a Flask backend API for algorithm computation, allowing us to demonstrate both client-side interactivity and server-side processing patterns.</p>
+                </div>
+
+                <div class="project-section">
+                    <h3>Algorithm Pseudocode & Animation</h3>
+                    <p><strong>Graham's Scan (O(n log n)):</strong></p>
+                    <pre class="pseudocode">1. Find the lowest point (pivot)
+2. Sort all points by polar angle with respect to pivot
+3. Initialize stack with first 3 points
+4. For each remaining point:
+   - While the last 3 points make a right turn:
+     * Pop the middle point from stack
+   - Push current point onto stack
+5. Stack contains the convex hull</pre>
+                    <p class="animation-note">We animate: pivot selection, polar angle sorting, the stack operations, and the turn detection (highlighting points being considered and removed).</p>
+
+                    <p><strong>Jarvis March (O(nh)):</strong></p>
+                    <pre class="pseudocode">1. Start with leftmost point
+2. Repeat until back at start:
+   - Find point that makes smallest counter-clockwise angle
+   - Add to hull
+   - Move to that point
+3. Return hull points</pre>
+                    <p class="animation-note">We animate: the "wrapping" process, showing candidate points being tested and the selection of the next hull point.</p>
+
+                    <p><strong>Chan's Algorithm (O(n log h)):</strong></p>
+                    <pre class="pseudocode">1. Guess hull size h = 2^(2^t)
+2. Partition points into groups of size h
+3. Compute hull of each partition using Graham's Scan
+4. Use Jarvis March on the mini-hulls
+5. If successful, return; else increase h and retry</pre>
+                    <p class="animation-note">We animate: partitioning, mini-hull computation, and the Jarvis march across partitions.</p>
+                </div>
+
+                <div class="project-section">
+                    <h3>Implementation Choices</h3>
+                    <ul class="implementation-list">
+                        <li><strong>Backend API Architecture:</strong> We separated algorithm computation from visualization to demonstrate scalability and allow for potential heavy computations without blocking the UI.</li>
+                        <li><strong>Step-by-step Recording:</strong> Rather than computing on-the-fly, we record all algorithm steps server-side and replay them client-side, enabling pause/rewind functionality and consistent timing.</li>
+                        <li><strong>Adaptive Speed Control:</strong> The animation speed dynamically adjusts based on dataset size to maintain educational value without becoming tediously slow or impossibly fast.</li>
+                        <li><strong>Comparison Mode:</strong> We implemented a parallel execution mode that runs all algorithms simultaneously and presents performance metrics, helping users understand the practical differences between theoretical complexities.</li>
+                        <li><strong>Interactive Point Generation:</strong> Users can manually place points, generate random distributions, or create circle patterns to explore how input characteristics affect algorithm performance.</li>
+                    </ul>
+                </div>
+
+                <div class="project-section">
+                    <h3>Team</h3>
+                    <p class="team-names">Scott LoPinto, Rylie Platt, Vibudh Bhardwaj</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openProjectInfoModal() {
+            document.getElementById('project-info-modal').style.display = 'flex';
+        }
+
+        function closeProjectInfoModal() {
+            document.getElementById('project-info-modal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('project-info-modal');
+            if (event.target === modal) {
+                closeProjectInfoModal();
+            }
+        });
+    </script>
 
 </body>
 
