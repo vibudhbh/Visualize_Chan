@@ -422,6 +422,41 @@
             </div>
             <div class="modal-body">
                 <div class="project-section">
+                    <h3>What is a Convex Hull?</h3>
+                    <p>A <strong>convex hull</strong> is the smallest convex polygon that contains all given points in a
+                        set. Think of it as stretching a rubber band around all the points - the rubber band will
+                        naturally form the convex hull. This concept is fundamental in computational geometry with
+                        applications in pattern recognition, image processing, collision detection, and geographic
+                        information systems.</p>
+                </div>
+
+                <div class="project-section">
+                    <h3>How to Use This Tool</h3>
+                    <div class="help-steps">
+                        <div class="help-step">
+                            <strong>1. Generate Points:</strong> Create random points using the "Generate Random"
+                            button, create a circular pattern with "Generate Circle", or manually click on the canvas to
+                            add individual points.
+                        </div>
+                        <div class="help-step">
+                            <strong>2. Choose Algorithm:</strong> Select one of the four convex hull algorithms
+                            (Graham's Scan, Jarvis March, Chan's Algorithm, or Incremental Hull) to explore how it
+                            works.
+                        </div>
+                        <div class="help-step">
+                            <strong>3. Run Visualization:</strong> Click "Run Algorithm" to see a step-by-step animation
+                            of how the algorithm computes the convex hull, or use "Compare All" to see performance
+                            differences between all algorithms.
+                        </div>
+                        <div class="help-step">
+                            <strong>4. Control Playback:</strong> Use the playback controls to pause, step
+                            forward/backward, or adjust the animation speed to better understand each step of the
+                            algorithm.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-section">
                     <h3>Problem Statement</h3>
                     <p>This visualization demonstrates how different convex hull algorithms compute the smallest convex
                         polygon that encloses a set of points in 2D space. We aim to provide an interactive,
@@ -440,40 +475,6 @@
                         though our implementations handle edge cases. The visualization uses D3.js for rendering and a
                         Flask backend API for algorithm computation, allowing us to demonstrate both client-side
                         interactivity and server-side processing patterns.</p>
-                </div>
-
-                <div class="project-section">
-                    <h3>Algorithm Pseudocode & Animation</h3>
-                    <p><strong>Graham's Scan (O(n log n)):</strong></p>
-                    <pre class="pseudocode">1. Find the lowest point (pivot)
-2. Sort all points by polar angle with respect to pivot
-3. Initialize stack with first 3 points
-4. For each remaining point:
-   - While the last 3 points make a right turn:
-     * Pop the middle point from stack
-   - Push current point onto stack
-5. Stack contains the convex hull</pre>
-                    <p class="animation-note">We animate: pivot selection, polar angle sorting, the stack operations,
-                        and the turn detection (highlighting points being considered and removed).</p>
-
-                    <p><strong>Jarvis March (O(nh)):</strong></p>
-                    <pre class="pseudocode">1. Start with leftmost point
-2. Repeat until back at start:
-   - Find point that makes smallest counter-clockwise angle
-   - Add to hull
-   - Move to that point
-3. Return hull points</pre>
-                    <p class="animation-note">We animate: the "wrapping" process, showing candidate points being tested
-                        and the selection of the next hull point.</p>
-
-                    <p><strong>Chan's Algorithm (O(n log h)):</strong></p>
-                    <pre class="pseudocode">1. Guess hull size h = 2^(2^t)
-2. Partition points into groups of size h
-3. Compute hull of each partition using Graham's Scan
-4. Use Jarvis March on the mini-hulls
-5. If successful, return; else increase h and retry</pre>
-                    <p class="animation-note">We animate: partitioning, mini-hull computation, and the Jarvis march
-                        across partitions.</p>
                 </div>
 
                 <div class="project-section">
